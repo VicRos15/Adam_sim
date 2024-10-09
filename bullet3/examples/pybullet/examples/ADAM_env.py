@@ -32,6 +32,8 @@ class ADAM:
         # Aplicar los valores de los sliders a las articulaciones
         for i, joint_id in enumerate(self.ur3_left_arm_joints + self.ur3_right_arm_joints):
             slider_value = p.readUserDebugParameter(self.slider_ids[i])
+            print(f"Valor del slider para la articulación {joint_id}: {slider_value}")
+
             if not self.detect_autocollisions():
                 p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, slider_value)
             else:
@@ -103,6 +105,7 @@ class ADAM:
     
     def move_arm_to_position(self, arm, target_position, target_orientation=None):
         #! Inverse kinematics for the UR3 robot
+
         #lower limits for null space
         ll = [-3.14]*6
         #upper limits for null space
@@ -114,11 +117,24 @@ class ADAM:
         #joint damping coefficents
         jd = [0.1]*6
         
+        #Numero de articulaciones
+        all_joints = list(range(p.getNumJoints(self.robot_id)))
+
         # Obtener los índices del brazo seleccionado
         if arm == "left":
             joint_indices = self.ur3_left_arm_joints
+            # Excluir las del brazo izquierdo
+            avoid_joints = list(set(all_joints) - set(self.ur3_left_arm_joints))
+            #offset del brazo izquierdo para la solucion cinematica inversa
+            offset_iksol = 8
+
         elif arm == "right":
-            joint_indices = self.ur3_right_arm_joints
+            joint_indices = self.ur3_right_arm_joints 
+            # Excluir las del brazo izquierdo
+            avoid_joints = list(set(all_joints) - set(self.ur3_right_arm_joints))
+            #offset del brazo derecho para la solucion cinematica inversa
+            offset_iksol = 2
+
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
 
@@ -126,15 +142,19 @@ class ADAM:
         if target_orientation is None:
             target_orientation = p.getQuaternionFromEuler([0, -math.pi, 0])
 
-        for joint_i in self.left_avoid_joints:
+        for joint_i in avoid_joints:
             p.resetJointState(self.robot_id, joint_i, 0)  # Establecer la posición fija deseada
-            p.setJointMotorControl2(self.robot_id, joint_i, p.POSITION_CONTROL, targetPosition=0, force=500)
+            p.setJointMotorControl2(self.robot_id, joint_i, p.POSITION_CONTROL, targetPosition=0, force=500) #mantener las articulaciones restantes rígidas
         
         # Calcular la cinemática inversa
         ik_solution = p.calculateInverseKinematics(self.robot_id, joint_indices[-1], target_position, target_orientation,lowerLimits=ll,
                                                 upperLimits=ul,
                                                 jointRanges=jr,
                                                 restPoses=rp)
+        
+        # Imprimir lista de la solucion de la cinemática inversa
+        for i, joint_value in enumerate(ik_solution):
+            print(f"Joint {i}: {joint_value}")
 
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
@@ -143,7 +163,7 @@ class ADAM:
 
         # Si la solución es válida, mover el brazo
         for i, joint_id in enumerate(joint_indices):
-            p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+8])
+            p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
         print(f"Brazo {arm} movido a la posición: {target_position}.")
         return True
@@ -179,34 +199,59 @@ class ADAM:
     def run_simulation(self):
         # Función principal de simulación
         #box_id = p.loadURDF("cube.urdf", [0.5, 0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
-        positions = [[0.17, 0.48, 1.36], [0.15, 0.48, 1.36], [0.13, 0.48, 1.36]]
+        position1 = [0.30, 0.48, 2.0]
+        position2 = [6.0, 0.48, 4.0]
+        position3 = [10.0, 0.48, 6.0]
+        position4 = [50.0,0.48, 8.0]
+        position5 = [100.0,0.48, 20.0]
+        positions = [[0.20, 0.48, 1.36], [0.15, 0.48, 1.36], [0.05, 0.48, 1.36]]
         while True:
-            """ self.apply_slider_values()
-            left_collision, right_collision = self.detect_collision_with_objects(box_id)
-    
-            if left_collision:
-                print("¡Colisión detectada en el brazo izquierdo!")
-            if right_collision:
-                print("¡Colisión detectada en el brazo derecho!") """
+            #Actualizar los valores del slide
+            # self.apply_slider_values()
+
+            #Detectar objeto
+            # left_collision, right_collision = self.detect_collision_with_objects(box_id)
+
+            # if left_collision:
+            #     print("¡Colisión detectada en el brazo izquierdo!")
+            # if right_collision:
+            #     print("¡Colisión detectada en el brazo derecho!")
             joints_pos = self.get_joint_positions("left")
-            print("Antes",joints_pos)
-            
-            self.move_arm_to_multiple_positions("left", positions)
-            pos,ori = self.get_end_effector_position("left")
-            print("Valores internos",pos)
+            # print("Antes",joints_pos)
+
+            #Mover la articulacion mediante cinematica inversa 3 veces
+            self.move_arm_to_position("right", position1)
             p.stepSimulation()
-            time.sleep(1.0 / 240.0)
-            print("Despues",joints_pos)
+            time.sleep(200.0 / 240.0)
+     
+            self.move_arm_to_position("right", position2)
+            p.stepSimulation()
+            time.sleep(200.0 / 240.0)
+
+            self.move_arm_to_position("right", position3)
+            p.stepSimulation()
+            time.sleep(200.0 / 240.0)
+
+            self.move_arm_to_position("right", position4)
+            p.stepSimulation()
+            time.sleep(200.0 / 240.0)
+
+            self.move_arm_to_position("right", position5)
+            p.stepSimulation()
+            time.sleep(200.0 / 240.0)
+            # self.move_arm_to_multiple_positions("left", positions)
+            pos,ori = self.get_end_effector_position("left")
+            # print("Valores internos",pos)
+
+            # print("Despues",joints_pos)
             
-
-
 # Ejemplo de uso:
-robot_urdf_path = "/home/nox/Escritorio/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
+robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
 adam_robot = ADAM(robot_urdf_path)
-#adam_robot.create_sliders()
-""" adam_robot.move_arm_to_position("left", [0.3, 0.45, 1.30])
+adam_robot.create_sliders()
+adam_robot.move_arm_to_position("left", [0.3, 0.45, 1.30])
 pos,ori = adam_robot.get_end_effector_position("left")
-print(pos) """
+print(pos)
 joints_pos = adam_robot.get_joint_positions("left")
 print("Antes",joints_pos)
 adam_robot.run_simulation()
