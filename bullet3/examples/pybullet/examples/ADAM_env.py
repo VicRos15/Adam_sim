@@ -34,11 +34,16 @@ class ADAM:
             slider_value = p.readUserDebugParameter(self.slider_ids[i])
             print(f"Valor del slider para la articulación {joint_id}: {slider_value}")
 
+            # Controlar la articulación con el valor del slider
             if not self.detect_autocollisions():
-                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, slider_value)
+                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, targetPosition=slider_value, force=500)
             else:
-                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, slider_value)
+                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, targetPosition=slider_value, force=500)
                 print("Colisión detectada.")
+
+        # Avanzar la simulación para que los movimientos se apliquen
+        p.stepSimulation()
+        time.sleep(10.0 / 240.0)
 
     def detect_autocollisions(self):
         #! TODO: Detectar colisiones con el cuerpo del robot
@@ -103,6 +108,48 @@ class ADAM:
         link_state = p.getLinkState(self.robot_id, end_effector_index)
         return link_state[4],link_state[5]
     
+    
+    def get_joint_positions(self, arm):
+        joint_positions = {}
+
+        # Obtener los índices del brazo seleccionado
+        if arm == "left":
+            joint_indices = self.ur3_left_arm_joints
+        elif arm == "right":
+            joint_indices = self.ur3_right_arm_joints
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+
+        # Leer las posiciones articulares
+        for joint_id in joint_indices:
+            joint_state = p.getJointState(self.robot_id, joint_id)
+            joint_positions[joint_id] = joint_state[0]  # La posición de la articulación está en el índice 0
+
+        return joint_positions
+
+
+
+
+    def move_joints_to_angles(self, arm, joint_angles):
+        #! Direct Kinematics for the UR3 robot
+        if arm == "left":
+            joint_indices = self.ur3_left_arm_joints
+        elif arm == "right":
+            joint_indices = self.ur3_right_arm_joints
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+
+        #Asignar los ángulos a cada articulación del brazo
+        for i, joint_angle in enumerate(joint_angles):
+            p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
+            
+        #Obtener el indice de la articulación del efector final
+        ee_link_index = joint_indices[-1]
+        link_state = p.getLinkState(self.robot_id, ee_link_index)
+
+        #preguntar a adri cual es la posicion del vector de la cinematica directa que prefiere conocer
+
+
     def move_arm_to_position(self, arm, target_position, target_orientation=None):
         #! Inverse kinematics for the UR3 robot
 
@@ -152,9 +199,9 @@ class ADAM:
                                                 jointRanges=jr,
                                                 restPoses=rp)
         
-        # Imprimir lista de la solucion de la cinemática inversa
-        for i, joint_value in enumerate(ik_solution):
-            print(f"Joint {i}: {joint_value}")
+        # # Imprimir lista de la solucion de la cinemática inversa
+        # for i, joint_value in enumerate(ik_solution):
+        #     print(f"Joint {i}: {joint_value}")
 
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
@@ -174,84 +221,46 @@ class ADAM:
             success = self.move_arm_to_position(arm, target_position, target_orientation)
             if not success:
                 print(f"Brazo {arm} no pudo alcanzar la posición: {target_position}.")
-    
-    def get_joint_positions(self, arm):
-        joint_positions = {}
+            else:
+                print(f"Brazo {arm} alcanzó la posición: {target_position}.")
+                # Avanzar la simulación y permitir tiempo para que se vea el movimiento
 
-        # Obtener los índices del brazo seleccionado
-        if arm == "left":
-            joint_indices = self.ur3_left_arm_joints
-        elif arm == "right":
-            joint_indices = self.ur3_right_arm_joints
-        else:
-            raise ValueError("El brazo debe ser 'left' o 'right'.")
-
-        # Leer las posiciones articulares
-        for joint_id in joint_indices:
-            joint_state = p.getJointState(self.robot_id, joint_id)
-            joint_positions[joint_id] = joint_state[0]  # La posición de la articulación está en el índice 0
-
-        return joint_positions
-
+            #Pequeño delay para apreciar el movimiento entre cada una de las posiciones comandadas
+            p.stepSimulation()
+            time.sleep(10.0 / 240.0)
     
     
     #! START SIMULATION
     def run_simulation(self):
         # Función principal de simulación
         #box_id = p.loadURDF("cube.urdf", [0.5, 0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
+
+        #Posiciones comandadas
         position1 = [0.30, 0.48, 2.0]
         position2 = [6.0, 0.48, 4.0]
         position3 = [10.0, 0.48, 6.0]
         position4 = [50.0,0.48, 8.0]
         position5 = [100.0,0.48, 20.0]
-        positions = [[0.20, 0.48, 1.36], [0.15, 0.48, 1.36], [0.05, 0.48, 1.36]]
+        positions = [[0.20, 0.48, 1.36], [0.15, 0.48, 1.36], [0.05, 0.48, 1.36],[100.0,0.48, 20.0],[10.0, 0.48, 6.0],[50.0,0.48, 8.0]]
+
+
         while True:
             #Actualizar los valores del slide
-            # self.apply_slider_values()
+            self.apply_slider_values()
 
-            #Detectar objeto
-            # left_collision, right_collision = self.detect_collision_with_objects(box_id)
-
-            # if left_collision:
-            #     print("¡Colisión detectada en el brazo izquierdo!")
-            # if right_collision:
-            #     print("¡Colisión detectada en el brazo derecho!")
             joints_pos = self.get_joint_positions("left")
-            # print("Antes",joints_pos)
 
-            #Mover la articulacion mediante cinematica inversa 3 veces
-            self.move_arm_to_position("right", position1)
-            p.stepSimulation()
-            time.sleep(200.0 / 240.0)
-     
-            self.move_arm_to_position("right", position2)
-            p.stepSimulation()
-            time.sleep(200.0 / 240.0)
-
-            self.move_arm_to_position("right", position3)
-            p.stepSimulation()
-            time.sleep(200.0 / 240.0)
-
-            self.move_arm_to_position("right", position4)
-            p.stepSimulation()
-            time.sleep(200.0 / 240.0)
-
-            self.move_arm_to_position("right", position5)
-            p.stepSimulation()
-            time.sleep(200.0 / 240.0)
             # self.move_arm_to_multiple_positions("left", positions)
             pos,ori = self.get_end_effector_position("left")
-            # print("Valores internos",pos)
 
-            # print("Despues",joints_pos)
-            
+            p.stepSimulation()
+            time.sleep(10.0 / 240.0)
+
+
 # Ejemplo de uso:
 robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
 adam_robot = ADAM(robot_urdf_path)
 adam_robot.create_sliders()
-adam_robot.move_arm_to_position("left", [0.3, 0.45, 1.30])
-pos,ori = adam_robot.get_end_effector_position("left")
-print(pos)
-joints_pos = adam_robot.get_joint_positions("left")
-print("Antes",joints_pos)
+# pos,ori = adam_robot.get_end_effector_position("left")
+# joints_pos = adam_robot.get_joint_positions("left")
 adam_robot.run_simulation()
