@@ -12,12 +12,39 @@ class ADAM:
         p.setGravity(0, 0, -9.81)
         self.robot_id = p.loadURDF(urdf_path, useFixedBase=True)  # Cambiar la posición si es necesario
 
+        #Definir null space
+        #lower limits for null space
+        self.ll = [-3.14]*6
+        #upper limits for null space
+        self.ul = [3.14]*6
+        #joint ranges for null space
+        self.jr = [6.28]*6
+        #restposes for null space
+        self.rp = [0]*6
+        #joint damping coefficents
+        self.jd = [0.1]*6
+
         # Definir los índices de los brazos (esto depende de tu URDF)
         self.ur3_left_arm_joints = [31,32,33,34,35,36]  # Brazo izquierdo
         self.ur3_right_arm_joints = [20,21,22,23,24,25]  # Brazo derecho
         self.left_avoid_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,37,38,39]  # Articulaciones a evitar para la detección de colisiones
         self.right_avoid_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,37,38,39]  # Articulaciones a evitar para la detección de colisiones
 
+    #Cálculo de la cinématica inversa
+    def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
+        
+        if null:
+            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
+                                                    upperLimits=self.ul,
+                                                    jointRanges=self.jr,
+                                                    restPoses=self.rp)
+        else:
+            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=None,
+                                                    upperLimits=None,
+                                                    jointRanges=None,
+                                                    restPoses=None)
+        return ik_solution
+    
     def create_sliders(self):
         # Crear sliders para controlar las articulaciones
         self.slider_ids = []
@@ -32,7 +59,7 @@ class ADAM:
         # Aplicar los valores de los sliders a las articulaciones
         for i, joint_id in enumerate(self.ur3_left_arm_joints + self.ur3_right_arm_joints):
             slider_value = p.readUserDebugParameter(self.slider_ids[i])
-            print(f"Valor del slider para la articulación {joint_id}: {slider_value}")
+            # print(f"Valor del slider para la articulación {joint_id}: {slider_value}")
 
             # Controlar la articulación con el valor del slider
             if not self.detect_autocollisions():
@@ -41,11 +68,11 @@ class ADAM:
                 p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, targetPosition=slider_value, force=500)
                 print("Colisión detectada.")
 
-        # Avanzar la simulación para que los movimientos se apliquen
-        p.stepSimulation()
-        time.sleep(10.0 / 240.0)
+            # Avanzar la simulación para que los movimientos se apliquen
+            p.stepSimulation()
+            time.sleep(10.0 / 240.0)
 
-    def detect_autocollisions(self):
+    def detect_autocollisions(self):        
         #! TODO: Detectar colisiones con el cuerpo del robot
         #* SOLUTION: Hacer bloques de cuerpos para detectar collisiones, en lugar de i not in , hace i in
         # Detectar colisiones entre los brazos y el cuerpo del robot
@@ -96,7 +123,8 @@ class ADAM:
 
         return left_arm_collision, right_arm_collision
     
-    def get_end_effector_position(self, arm):
+    
+    def get_end_effector_pose(self, arm):
         # Obtener la posición del efector final del brazo
         if arm == "left":
             end_effector_index = self.ur3_left_arm_joints[-1]
@@ -109,7 +137,7 @@ class ADAM:
         return link_state[4],link_state[5]
     
     
-    def get_joint_positions(self, arm):
+    def get_joint_pose(self, arm):
         joint_positions = {}
 
         # Obtener los índices del brazo seleccionado
@@ -131,7 +159,7 @@ class ADAM:
 
 
     def move_joints_to_angles(self, arm, joint_angles):
-        #! Direct Kinematics for the UR3 robot
+        
         if arm == "left":
             joint_indices = self.ur3_left_arm_joints
         elif arm == "right":
@@ -142,27 +170,13 @@ class ADAM:
         #Asignar los ángulos a cada articulación del brazo
         for i, joint_angle in enumerate(joint_angles):
             p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
-            
-        #Obtener el indice de la articulación del efector final
-        ee_link_index = joint_indices[-1]
-        link_state = p.getLinkState(self.robot_id, ee_link_index)
-
-        #preguntar a adri cual es la posicion del vector de la cinematica directa que prefiere conocer
 
 
-    def move_arm_to_position(self, arm, target_position, target_orientation=None):
-        #! Inverse kinematics for the UR3 robot
 
-        #lower limits for null space
-        ll = [-3.14]*6
-        #upper limits for null space
-        ul = [3.14]*6
-        #joint ranges for null space
-        jr = [6.28]*6
-        #restposes for null space
-        rp = [0]*6
-        #joint damping coefficents
-        jd = [0.1]*6
+    def move_arm_to_pose(self, arm, pose):
+        #Descomponemos la pose
+        target_position = pose[0]
+        target_orientation = pose[1]
         
         #Numero de articulaciones
         all_joints = list(range(p.getNumJoints(self.robot_id)))
@@ -185,82 +199,100 @@ class ADAM:
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
 
-        # Si no se pasa orientación, se asume una orientación por defecto (efector apuntando hacia abajo)
-        if target_orientation is None:
-            target_orientation = p.getQuaternionFromEuler([0, -math.pi, 0])
-
-        for joint_i in avoid_joints:
-            p.resetJointState(self.robot_id, joint_i, 0)  # Establecer la posición fija deseada
-            p.setJointMotorControl2(self.robot_id, joint_i, p.POSITION_CONTROL, targetPosition=0, force=500) #mantener las articulaciones restantes rígidas
+        # for joint_i in avoid_joints:
+        #     p.resetJointState(self.robot_id, joint_i, 0)  # Establecer la posición fija deseada
+        #     p.setJointMotorControl2(self.robot_id, joint_i, p.POSITION_CONTROL, targetPosition=0, force=500) #mantener las articulaciones restantes rígidas
         
-        # Calcular la cinemática inversa
-        ik_solution = p.calculateInverseKinematics(self.robot_id, joint_indices[-1], target_position, target_orientation,lowerLimits=ll,
-                                                upperLimits=ul,
-                                                jointRanges=jr,
-                                                restPoses=rp)
-        
-        # # Imprimir lista de la solucion de la cinemática inversa
-        # for i, joint_value in enumerate(ik_solution):
-        #     print(f"Joint {i}: {joint_value}")
 
+        # Inverse kinematics for the UR3 robot
+        ik_solution = self.Calculate_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
+        
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
             print(f"Posición no alcanzable por el brazo {arm}.")
             return False
-
         # Si la solución es válida, mover el brazo
-        for i, joint_id in enumerate(joint_indices):
-            p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
+        else:
+            for i, joint_id in enumerate(joint_indices):
+                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
+                print(f"Brazo {arm} movido a la posición: {target_position}.")
+            return True
 
-        print(f"Brazo {arm} movido a la posición: {target_position}.")
-        return True
     
-    def move_arm_to_multiple_positions(self, arm, target_positions, target_orientation=None):
+    def move_arm_to_multiple_poses(self, arm, poses):
     
-        for target_position in target_positions:
-            success = self.move_arm_to_position(arm, target_position, target_orientation)
-            if not success:
-                print(f"Brazo {arm} no pudo alcanzar la posición: {target_position}.")
-            else:
-                print(f"Brazo {arm} alcanzó la posición: {target_position}.")
-                # Avanzar la simulación y permitir tiempo para que se vea el movimiento
+        for pose in poses:
+            self.move_arm_to_pose(arm, pose)
 
             #Pequeño delay para apreciar el movimiento entre cada una de las posiciones comandadas
             p.stepSimulation()
-            time.sleep(10.0 / 240.0)
+            # time.sleep(100.0 / 240.0)
     
     
     #! START SIMULATION
-    def run_simulation(self):
+    def run_simulation(self, useSimulation, useRealTimeSimulation):
+    
+        p.setRealTimeSimulation(useRealTimeSimulation)
+
+        #Inicializamos el tiempo de simulacion
+        if useRealTimeSimulation:
+            t = time.time() #Emplea como tiempo de simulacion el tiempo real, o tiempo del ordenador
+        else:
+            t = 0.01 #frecuencia de 100Hz
+
+
         # Función principal de simulación
         #box_id = p.loadURDF("cube.urdf", [0.5, 0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
 
-        #Posiciones comandadas
-        position1 = [0.30, 0.48, 2.0]
-        position2 = [6.0, 0.48, 4.0]
-        position3 = [10.0, 0.48, 6.0]
-        position4 = [50.0,0.48, 8.0]
-        position5 = [100.0,0.48, 20.0]
-        positions = [[0.20, 0.48, 1.36], [0.15, 0.48, 1.36], [0.05, 0.48, 1.36],[100.0,0.48, 20.0],[10.0, 0.48, 6.0],[50.0,0.48, 8.0]]
+        #Poses comandadas
+        poses = [
+            [[0.4, 0.7, 0.36], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.45, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.5, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.4, 0.7, 0.36], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.45, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.5, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.4, 0.7, 0.36], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.45, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])],
+            [[0.5, 0.7, 0.7], p.getQuaternionFromEuler([0, -math.pi, 0])]
+        ]
 
 
         while True:
             #Actualizar los valores del slide
-            self.apply_slider_values()
+            # self.apply_slider_values()
 
-            joints_pos = self.get_joint_positions("left")
+            joints_pos = self.get_joint_pose("left")
 
-            # self.move_arm_to_multiple_positions("left", positions)
-            pos,ori = self.get_end_effector_position("left")
+            self.move_arm_to_multiple_poses("left", poses)
+            pos,ori = self.get_end_effector_pose("left")
+            print("Posicion ee real:",pos)
+            print("Orientación ee real:",ori)
+            # p.stepSimulation()
+            # time.sleep(10.0 / 240.0)
 
-            p.stepSimulation()
-            time.sleep(10.0 / 240.0)
+
+
+# #Clase KINEMATICS
+# class ADAM_kinematics(ADAM):
+#     def __init__(self, urdf_path, used_fixed_base=True):
+#         #Constructor de la clase padre (ADAM)
+#         super().__init__(urdf_path, used_fixed_base)
+
+#     def Calculate_direct_kinematics(self, arm):
+#         #Obtener la pose del efector final
+#         pos, ori = self.get_end_effector_pose(arm)
+#         print(f"Posición del efector final del brazo {arm}: {pos}")
+#         print(f"Orientación del efector final del brazo {arm}: {ori}")
+#         return pos, ori
 
 
 # Ejemplo de uso:
 robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
 adam_robot = ADAM(robot_urdf_path)
 adam_robot.create_sliders()
-# pos,ori = adam_robot.get_end_effector_position("left")
+# adam_kinematics = ADAM_kinematics(robot_urdf_path)
+
+# pos,ori = adam_robot.get_end_effector_pose("left")
 # joints_pos = adam_robot.get_joint_positions("left")
-adam_robot.run_simulation()
+adam_robot.run_simulation(0,1)

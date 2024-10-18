@@ -67,7 +67,7 @@ useNullSpace = 0
 useOrientation = 0
 #If we set useSimulation=0, it sets the arm pose to be the IK result directly without using dynamic control.
 #This can be used to test the IK result accuracy.
-useSimulation = 1
+useSimulation = 0
 useRealTimeSimulation = 1
 p.setRealTimeSimulation(useRealTimeSimulation)
 #trailDuration is duration (in seconds) after debug lines will be removed automatically
@@ -150,6 +150,7 @@ while 1:
   for i in range(1):
     #pos = [-0.4,0.2*math.cos(t),0.+0.2*math.sin(t)]
     pos = [0.2 * math.cos(t), 0, 0. + 0.2 * math.sin(t) + 0.7]
+    print(pos)
     #end effector points down, not up (in case useOrientation==1)
     orn = p.getQuaternionFromEuler([0, -math.pi, 0])
 
