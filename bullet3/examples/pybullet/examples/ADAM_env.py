@@ -36,13 +36,16 @@ class ADAM:
         self.ur3_right_arm_joints = [20,21,22,23,24,25]  # Brazo derecho
         self.ur3_left_arm_joints = [31,32,33,34,35,36]  # Brazo izquierdo
         self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,29,30,37,38,39] #Cuerpo 
-        self.left_body = [17,30,37]  # Hombro izquierdo
-        self.right_body = [17,19,26] #Hombro derecho
+        self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+        self.left_body = [37]  # Hombro izquierdo
+        self.right_body = [26] #Hombro derecho
         # self.right_avoid_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,20,21,22,23,24,25,26,27,28,29,30,37,38,39]  # Articulaciones a evitar para la detección de colisiones
 
-        # #Activar las colisiones de todo el robot
-        # for i in range(p.getNumJoints(self.robot_id)):
-        #     p.setCollisionFilterPair(self.robot_id, self.robot_id, -1, i, 1)
+        #Desactivar las colisiones del torso con los brazos
+
+        p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id,bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0, physicsClientId=self.physicsClient)
+        p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id, bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=31, enableCollision=0, physicsClientId=self.physicsClient)
+
 
         # Desactivar colisiones para el joint 17 con otras articulaciones de los brazos
         # p.setCollisionFilterPair(self.robot_id, self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0)
@@ -110,8 +113,11 @@ class ADAM:
                 if body_joint not in self.ur3_left_arm_joints and body_joint not in self.left_body:
                     contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=body_joint)
                     if len(contact_points) > 0:
-                        print(f"Colisión detectada entre brazo izquierdo y el cuerpo en los joints: {left_joint} y {body_joint}")
-                        return True
+                        if left_joint==31 and body_joint==17:
+                            return False
+                        else:
+                            print(f"Colisión detectada entre brazo izquierdo y el cuerpo en los joints: {left_joint} y {body_joint}")
+                            return True
 
         # Colisiones entre brazo derecho y el cuerpo
         for right_joint in self.ur3_right_arm_joints:
@@ -119,8 +125,11 @@ class ADAM:
                 if body_joint not in self.ur3_right_arm_joints and body_joint not in self.right_body:
                     contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=right_joint, linkIndexB=body_joint)
                     if len(contact_points) > 0:
-                        print(f"Colisión detectada entre brazo derecho y el cuerpo en los joints: {right_joint} y {body_joint}")
-                        return True
+                        if right_joint==20 and body_joint==17:
+                            return False
+                        else:
+                            print(f"Colisión detectada entre brazo derecho y el cuerpo en los joints: {right_joint} y {body_joint}")
+                            return True
         return False  # No hay colisiones
 
 
@@ -255,6 +264,17 @@ class ADAM:
                 p.stepSimulation()
                 time.sleep(self.t)
 
+
+    def print_robot_info(self):
+        num_joints = p.getNumJoints(self.robot_id)
+        print(f"Robot ID: {self.robot_id}")
+        print("Elementos del robot:")
+        for i in range(num_joints):
+            joint_info = p.getJointInfo(self.robot_id, i)
+            joint_id = joint_info[0]
+            joint_name = joint_info[1].decode("utf-8")
+            print(f"ID: {joint_id}, Nombre: {joint_name}")
+
     
     
     #! START SIMULATION
@@ -263,7 +283,7 @@ class ADAM:
         p.setRealTimeSimulation(self.useRealTimeSimulation)
 
         # Función principal de simulación
-        box_id = p.loadURDF("cube.urdf", [1, -0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
+        # box_id = p.loadURDF("cube.urdf", [1, -0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
 
         #Poses comandadas
         poses = [
@@ -282,12 +302,13 @@ class ADAM:
             #Actualizar los valores del slide
             self.apply_slider_values()
             # self.detect_autocollisions()
-            left_collision, right_collision = self.detect_collision_with_objects(box_id)
+            # left_collision, right_collision = self.detect_collision_with_objects(box_id)
 
-            if left_collision:
-                print("Colision del cubo con brazo izquierdo")
-            if right_collision:
-                print("Colision del cubo con brazo derecho")
+            # if left_collision:
+            #     print("Colision del cubo con brazo izquierdo")
+            # if right_collision:
+            #     print("Colision del cubo con brazo derecho")
+            # adam_robot.print_robot_info()
 
             if not self.useRealTimeSimulation:
                 time.sleep(self.t)
