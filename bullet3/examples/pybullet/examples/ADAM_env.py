@@ -7,7 +7,7 @@ import time
 
 
 class ADAM:
-    def __init__(self, urdf_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
+    def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         # Inicializar PyBullet y cargar el robot
         self.physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -19,6 +19,18 @@ class ADAM:
         self.t = 0.01
 
         self.robot_id = p.loadURDF(urdf_path, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) #flags=p.URDF_USE_SELF_COLLISION,# flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) # Cambiar la posición si es necesario
+        
+        #Creamos el objeto sin hombros
+        self.robot_shape = p.createCollisionShape(shapeType=p.GEOM_MESH,
+                                            fileName=robot_stl_path,
+                                            meshScale=[1, 1, 1])
+        self.robot_visual_shape = p.createVisualShape(shapeType=p.GEOM_MESH,
+                                                fileName=robot_stl_path,
+                                                meshScale=[1, 1, 1])  # Ajusta el escalado 
+        self.robot_stl_id = p.createMultiBody(baseMass=0,              
+                                    baseCollisionShapeIndex=self.robot_shape,
+                                    baseVisualShapeIndex=self.robot_visual_shape,
+                                    basePosition=[-0.10, 0, 0.73])    # Cambia la posición 
 
         #Definir null space
         #lower limits for null space
@@ -37,38 +49,11 @@ class ADAM:
         self.ur3_left_arm_joints = [31,32,33,34,35,36]  # Brazo izquierdo
         self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,29,30,37,38,39] #Cuerpo 
         self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
-        self.left_body = [37]  # Hombro izquierdo
-        self.right_body = [26] #Hombro derecho
-        # self.right_avoid_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,20,21,22,23,24,25,26,27,28,29,30,37,38,39]  # Articulaciones a evitar para la detección de colisiones
 
-        #Desactivar las colisiones del torso con los brazos
-
-        p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id,bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0, physicsClientId=self.physicsClient)
-        p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id, bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=31, enableCollision=0, physicsClientId=self.physicsClient)
+        # p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id,bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0, physicsClientId=self.physicsClient)
+        # p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id, bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=31, enableCollision=0, physicsClientId=self.physicsClient)
 
 
-        # Desactivar colisiones para el joint 17 con otras articulaciones de los brazos
-        # p.setCollisionFilterPair(self.robot_id, self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0)
-        # p.setCollisionFilterPair(self.robot_id, self.robot_id, linkIndexA=17, linkIndexB=31, enableCollision=0)
-        # p.setCollisionFilterPair(self.robot_id, self.robot_id, linkIndexA=17, linkIndexB=21, enableCollision=0)
-        # p.setCollisionFilterPair(self.robot_id, self.robot_id, linkIndexA=17, linkIndexB=32, enableCollision=0)
-
-
-    #Cálculo de la cinématica inversa
-    def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
-        
-        if null:
-            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
-                                                    upperLimits=self.ul,
-                                                    jointRanges=self.jr,
-                                                    restPoses=self.rp)
-        else:
-            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=None,
-                                                    upperLimits=None,
-                                                    jointRanges=None,
-                                                    restPoses=None)
-        return ik_solution
-    
     def create_sliders(self):
         # Crear sliders para controlar las articulaciones
         self.slider_ids = []
@@ -106,30 +91,36 @@ class ADAM:
                 if len(contact_points) > 0:
                     print("Colisión entre brazos detectada")
                     return True
+                
 
-        # Colisiones entre brazo izquierdo y el cuerpo
-        for left_joint in self.ur3_left_arm_joints:
-            for body_joint in self.body_joints:
-                if body_joint not in self.ur3_left_arm_joints and body_joint not in self.left_body:
-                    contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=body_joint)
-                    if len(contact_points) > 0:
-                        if left_joint==31 and body_joint==17:
-                            return False
-                        else:
-                            print(f"Colisión detectada entre brazo izquierdo y el cuerpo en los joints: {left_joint} y {body_joint}")
-                            return True
+        #Colisiones cuerpo-brazo izquierdo
+                
 
-        # Colisiones entre brazo derecho y el cuerpo
-        for right_joint in self.ur3_right_arm_joints:
-            for body_joint in self.body_joints:
-                if body_joint not in self.ur3_right_arm_joints and body_joint not in self.right_body:
-                    contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=right_joint, linkIndexB=body_joint)
-                    if len(contact_points) > 0:
-                        if right_joint==20 and body_joint==17:
-                            return False
-                        else:
-                            print(f"Colisión detectada entre brazo derecho y el cuerpo en los joints: {right_joint} y {body_joint}")
-                            return True
+        #Colisiones cuerpo-brazo derecho
+
+        # # Colisiones entre brazo izquierdo y el cuerpo
+        # for left_joint in self.ur3_left_arm_joints:
+        #     for body_joint in self.body_joints:
+        #         if body_joint not in self.ur3_left_arm_joints and body_joint not in self.left_body:
+        #             contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=body_joint)
+        #             if len(contact_points) > 0:
+        #                 if left_joint==31 and body_joint==17:
+        #                     return False
+        #                 else:
+        #                     print(f"Colisión detectada entre brazo izquierdo y el cuerpo en los joints: {left_joint} y {body_joint}")
+        #                     return True
+
+        # # Colisiones entre brazo derecho y el cuerpo
+        # for right_joint in self.ur3_right_arm_joints:
+        #     for body_joint in self.body_joints:
+        #         if body_joint not in self.ur3_right_arm_joints and body_joint not in self.right_body:
+        #             contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=right_joint, linkIndexB=body_joint)
+        #             if len(contact_points) > 0:
+        #                 if right_joint==20 and body_joint==17:
+        #                     return False
+        #                 else:
+        #                     print(f"Colisión detectada entre brazo derecho y el cuerpo en los joints: {right_joint} y {body_joint}")
+        #                     return True
         return False  # No hay colisiones
 
 
@@ -211,6 +202,21 @@ class ADAM:
             p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
 
 
+    #Cálculo de la cinématica inversa
+    def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
+        
+        if null:
+            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
+                                                    upperLimits=self.ul,
+                                                    jointRanges=self.jr,
+                                                    restPoses=self.rp)
+        else:
+            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=None,
+                                                    upperLimits=None,
+                                                    jointRanges=None,
+                                                    restPoses=None)
+        return ik_solution
+    
 
     def move_arm_to_pose(self, arm, pose):
         #Descomponemos la pose
@@ -282,9 +288,6 @@ class ADAM:
 
         p.setRealTimeSimulation(self.useRealTimeSimulation)
 
-        # Función principal de simulación
-        # box_id = p.loadURDF("cube.urdf", [1, -0.5, 0.5],useFixedBase=True)  # Cambiar la posición si es necesario
-
         #Poses comandadas
         poses = [
             [[0.3368, 0.5086, 1.4509], p.getQuaternionFromEuler([-1.7339, 0.77, -1.8])],
@@ -314,9 +317,12 @@ class ADAM:
                 time.sleep(self.t)
 
 
-# Ejemplo de uso:
+# Programa principal
 robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
-adam_robot = ADAM(robot_urdf_path,1,0)
+robot_stl_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/torso_sin_hombros.stl"
+
+
+adam_robot = ADAM(robot_urdf_path,robot_stl_path,1,0)
 adam_robot.create_sliders()
 
 adam_robot.run_simulation()
