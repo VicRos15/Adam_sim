@@ -94,9 +94,20 @@ class ADAM:
                 
 
         #Colisiones cuerpo-brazo izquierdo
-                
-
+        for left_joint in self.ur3_left_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=left_joint)
+            if len(contact_points) > 0:
+                print("Colisión entre brazo izq-cuerpo")
+                return True
+        
         #Colisiones cuerpo-brazo derecho
+        for right_joint in self.ur3_right_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=right_joint)
+            if len(contact_points) > 0:
+                print("Colisión entre brazo der-cuerpo")
+                return True
+
+        
 
         # # Colisiones entre brazo izquierdo y el cuerpo
         # for left_joint in self.ur3_left_arm_joints:
@@ -304,7 +315,7 @@ class ADAM:
 
             #Actualizar los valores del slide
             self.apply_slider_values()
-            # self.detect_autocollisions()
+            self.detect_autocollisions()
             # left_collision, right_collision = self.detect_collision_with_objects(box_id)
 
             # if left_collision:
