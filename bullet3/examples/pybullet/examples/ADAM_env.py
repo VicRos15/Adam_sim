@@ -50,8 +50,49 @@ class ADAM:
         self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,29,30,37,38,39] #Cuerpo 
         self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
 
+
+        #Calculo de la dinamica inversa
+        self.InverseDynamics = True
+
+
+
         # p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id,bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=20, enableCollision=0, physicsClientId=self.physicsClient)
         # p.setCollisionFilterPair(bodyUniqueIdA=self.robot_id, bodyUniqueIdB=self.robot_id, linkIndexA=17, linkIndexB=31, enableCollision=0, physicsClientId=self.physicsClient)
+
+
+    # Inverse dynamics
+    def Calculate_inverse_dynamics (self,target_pose):
+
+        #Goal pose
+        pos_des = target_pose[0]
+
+        #Calculate current pos, vel 
+        pos_act,vel_act = self.get_joints_pos_vel()
+
+        #Implement a PD controller to calculate desired acceleration
+        #PD parameters
+        kp = 300
+        kd = 10
+        #PD controller
+        acc_des = kp*(pos_des-pos_act)-kd*vel_act
+
+        # Calculate inverse dynamics
+        torque_IK = list(p.calculateInverseDynamics(self.robot_id,pos_act,vel_act,acc_des))
+        
+        # Compare torque calculated with the maximum torque 
+        for i, torque in enumerate(torque_IK):
+            joint_info = p.getJointInfo(self.robot_id,i)
+            max_torque = joint_info[10]
+
+            if abs(torque) > max_torque:
+                torque_IK[i] = max_torque if torque > 0 else -max_torque
+
+        return torque_IK
+        
+
+
+
+
 
 
     def create_sliders(self):
@@ -107,31 +148,6 @@ class ADAM:
                 print("Colisión entre brazo der-cuerpo")
                 return True
 
-        
-
-        # # Colisiones entre brazo izquierdo y el cuerpo
-        # for left_joint in self.ur3_left_arm_joints:
-        #     for body_joint in self.body_joints:
-        #         if body_joint not in self.ur3_left_arm_joints and body_joint not in self.left_body:
-        #             contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=body_joint)
-        #             if len(contact_points) > 0:
-        #                 if left_joint==31 and body_joint==17:
-        #                     return False
-        #                 else:
-        #                     print(f"Colisión detectada entre brazo izquierdo y el cuerpo en los joints: {left_joint} y {body_joint}")
-        #                     return True
-
-        # # Colisiones entre brazo derecho y el cuerpo
-        # for right_joint in self.ur3_right_arm_joints:
-        #     for body_joint in self.body_joints:
-        #         if body_joint not in self.ur3_right_arm_joints and body_joint not in self.right_body:
-        #             contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=right_joint, linkIndexB=body_joint)
-        #             if len(contact_points) > 0:
-        #                 if right_joint==20 and body_joint==17:
-        #                     return False
-        #                 else:
-        #                     print(f"Colisión detectada entre brazo derecho y el cuerpo en los joints: {right_joint} y {body_joint}")
-        #                     return True
         return False  # No hay colisiones
 
 
@@ -178,8 +194,9 @@ class ADAM:
         return link_state[4],link_state[5]
     
     
-    def get_joint_pose(self, arm):
+    def get_joints_pos_vel(self, arm):
         joint_positions = {}
+        joint_velocities = {}
 
         # Obtener los índices del brazo seleccionado
         if arm == "left":
@@ -193,9 +210,9 @@ class ADAM:
         for joint_id in joint_indices:
             joint_state = p.getJointState(self.robot_id, joint_id)
             joint_positions[joint_id] = joint_state[0]  # La posición de la articulación está en el índice 0
+            joint_velocities[joint_id] = joint_state[1] # La velocidad de la articulacion en el indice 1
 
-        return joint_positions
-
+        return joint_positions, joint_velocities
 
 
 
@@ -265,10 +282,21 @@ class ADAM:
             return False
         # Si la solución es válida, mover el brazo
         else:
-            for i, joint_id in enumerate(joint_indices):
-                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
-                print(f"Brazo {arm} movido a la posición: {target_position}.")
-            return True
+
+            if self.InverseDynamics:
+                #Calculo de la dinamica inversa
+                torque_ID = self.Calculate_inverse_dynamics(pose)
+
+                for i, joint_id in enumerate(joint_indices):
+                    p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque_ID[i])
+                    print(f"Brazo {arm} movido a la posición: {target_position}.")
+                return True               
+
+            else:
+                for i, joint_id in enumerate(joint_indices):
+                    p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
+                    print(f"Brazo {arm} movido a la posición: {target_position}.")
+                return True
 
     
     def move_arm_to_multiple_poses(self, arm, poses):
