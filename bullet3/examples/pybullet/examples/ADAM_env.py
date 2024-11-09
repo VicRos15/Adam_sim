@@ -25,12 +25,12 @@ class ADAM:
                                             fileName=robot_stl_path,
                                             meshScale=[1, 1, 1])
         self.robot_visual_shape = p.createVisualShape(shapeType=p.GEOM_MESH,
-                                                fileName=robot_stl_path,
-                                                meshScale=[1, 1, 1])  # Ajusta el escalado 
+                                                    fileName=robot_stl_path,
+                                                    meshScale=[1, 1, 1])  # Ajusta el escalado 
         self.robot_stl_id = p.createMultiBody(baseMass=0,              
-                                    baseCollisionShapeIndex=self.robot_shape,
-                                    baseVisualShapeIndex=self.robot_visual_shape,
-                                    basePosition=[-0.10, 0, 0.73])    # Cambia la posición 
+                                            baseCollisionShapeIndex=self.robot_shape,
+                                            baseVisualShapeIndex=self.robot_visual_shape,
+                                            basePosition=[-0.10, 0, 0.73])    # Cambia la posición 
 
         #Definir null space
         #lower limits for null space
@@ -61,24 +61,37 @@ class ADAM:
 
 
     # Inverse dynamics
-    def Calculate_inverse_dynamics (self,target_pose):
-
-        #Goal pose
-        pos_des = target_pose[0]
-
+    def Calculate_inverse_dynamics (self,target_pose, arm, offset):
         #Calculate current pos, vel 
-        pos_act,vel_act = self.get_joints_pos_vel()
+        if arm == "right" or arm == "left":
+            pos_act,vel_act = self.get_joints_pos_vel(arm)
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+        
+
+        # if len(target_pose) < len(self.ur3_left_arm_joints):
+        #     raise ValueError("target_pose no tiene suficientes elementos para el número de articulaciones.")
+        
+        # Goal pose
+        pos_des = []
+        for i in range(len(self.ur3_left_arm_joints)):
+            pos_des.append(target_pose[i])
 
         #Implement a PD controller to calculate desired acceleration
         #PD parameters
         kp = 300
         kd = 10
         #PD controller
-        acc_des = kp*(pos_des-pos_act)-kd*vel_act
+        acc_des=[]
+        for i in range(len(vel_act)):
+            acc_des.append(kp*(pos_des[i]-pos_act[i])-kd*vel_act[i])
 
-        # Calculate inverse dynamics
-        torque_IK = list(p.calculateInverseDynamics(self.robot_id,pos_act,vel_act,acc_des))
-        
+        #Calculate inverse dynamics
+        try:
+            torque_IK = list(p.calculateInverseDynamics(self.robot_id, pos_act, vel_act, acc_des, flags=1))
+        except Exception as e:
+            raise SystemError(f"Error en calculateInverseDynamics: {e}")
+
         # Compare torque calculated with the maximum torque 
         for i, torque in enumerate(torque_IK):
             joint_info = p.getJointInfo(self.robot_id,i)
@@ -89,11 +102,6 @@ class ADAM:
 
         return torque_IK
         
-
-
-
-
-
 
     def create_sliders(self):
         # Crear sliders para controlar las articulaciones
@@ -195,8 +203,8 @@ class ADAM:
     
     
     def get_joints_pos_vel(self, arm):
-        joint_positions = {}
-        joint_velocities = {}
+        joint_positions = []
+        joint_velocities = []
 
         # Obtener los índices del brazo seleccionado
         if arm == "left":
@@ -209,8 +217,8 @@ class ADAM:
         # Leer las posiciones articulares
         for joint_id in joint_indices:
             joint_state = p.getJointState(self.robot_id, joint_id)
-            joint_positions[joint_id] = joint_state[0]  # La posición de la articulación está en el índice 0
-            joint_velocities[joint_id] = joint_state[1] # La velocidad de la articulacion en el indice 1
+            joint_positions.append(joint_state[0])  # La posición de la articulación está en el índice 0
+            joint_velocities.append(joint_state[1]) # La velocidad de la articulacion en el indice 1
 
         return joint_positions, joint_velocities
 
@@ -285,7 +293,7 @@ class ADAM:
 
             if self.InverseDynamics:
                 #Calculo de la dinamica inversa
-                torque_ID = self.Calculate_inverse_dynamics(pose)
+                torque_ID = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
 
                 for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque_ID[i])
@@ -295,7 +303,7 @@ class ADAM:
             else:
                 for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
-                    print(f"Brazo {arm} movido a la posición: {target_position}.")
+                    # print(f"Brazo {arm} movido a la posición: {target_position}.")
                 return True
 
     
@@ -341,16 +349,7 @@ class ADAM:
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
 
-            #Actualizar los valores del slide
-            self.apply_slider_values()
-            self.detect_autocollisions()
-            # left_collision, right_collision = self.detect_collision_with_objects(box_id)
-
-            # if left_collision:
-            #     print("Colision del cubo con brazo izquierdo")
-            # if right_collision:
-            #     print("Colision del cubo con brazo derecho")
-            # adam_robot.print_robot_info()
+            self.move_arm_to_multiple_poses("left",poses)
 
             if not self.useRealTimeSimulation:
                 time.sleep(self.t)
