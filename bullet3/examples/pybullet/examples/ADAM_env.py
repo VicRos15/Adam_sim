@@ -61,7 +61,7 @@ class ADAM:
 
 
         #Calculo de la dinamica inversa
-        self.InverseDynamics = False
+        self.InverseDynamics = True
 
 
 
@@ -113,7 +113,7 @@ class ADAM:
     
 
     # Forward dynamics
-    def Calculate_forward_dynamics(self, arm, torques):
+    def Calculate_forward_dynamics(self, torques, arm):
         if arm == "right":
             joints = self.ur3_right_arm_joints
 
@@ -123,22 +123,36 @@ class ADAM:
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
 
-        joints_acc = []
-        for i in joints:
-            dynamics_info = p.getDynamicsInfo(self.robot_id,i)
-            inertia_diag = dynamics_info[2]
-
-            if inertia_diag[2] > 0:
-                joint_acceleration = torques[i] / inertia_diag[2] #Se utiliza inertia_diag[2] puesto que el eje de rotacion es el z
-            else:
-                joint_acceleration = 0
-
-            joints_acc.append(joint_acceleration)
-        
-        #Update current pos, vel 
+        #Se obtienen las posiciones y velocidades actuales
         self.pos_act,self.vel_act = self.get_joints_pos_vel(arm)
 
+        #Obtener los términos de la dinámica del sistema
+        zero_acc = [0.0] * len(joints)
+        zero_vel = zero_acc
+        #Termino gravitacional
+        tau_g = p.calculateInverseDynamics(self.robot_id,self.pos_act,zero_vel,zero_acc, flags=1)
+
+        #Terminos de coriolis y centrifugo
+        #Para calcular el torque de coriolis y centrifugas despreciamos la gravedad
+        tau_c_c_g = p.calculateInverseDynamics(self.robot_id,self.pos_act, self.vel_act,zero_acc, flags=1)
+    
+        # Restar los términos gravitacionales de los combinados
+        tau_c_c = [tau_c_c_g[i] - tau_g[i] for i in range(len(joints))]
         
+        #Calculo de la aceleracion
+        joints_acc=[]
+        for j, i in enumerate(joints):
+            #Matriz de inercia M
+            dynamics_info = p.getDynamicsInfo(self.robot_id,i)
+            # Obtener el valor de inercia para el eje z
+            I_z = dynamics_info[2][2]
+
+            
+            if I_z>0:
+                joints_acc.append((torques[j]-tau_c_c[j]-tau_g[j])/I_z)
+            else: 
+                joints_acc.append(0.0)
+
         return joints_acc
 
 
@@ -342,18 +356,8 @@ class ADAM:
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
                 acc = self.Calculate_forward_dynamics(torque,arm)
-
-                #Actualizamos los valores de vel actual y pos actual del sistema
-                pos_act, vel_act = self.get_joints_pos_vel(arm)
-                for i, joint_id in enumerate(joint_indices):
-                    # Integración de la velocidad y posición usando la aceleración
-                    vel_act[i] += acc[i] * self.t
-                    pos_act[i] += vel_act[i] * self.t
-
-                    #Se actualizan manualmente los valores de pos y vel actuales
-                    p.resetJointState(self.robot_id, joint_id, pos_act[i], vel_act[i])
-
-
+                for i in range(len(acc)):
+                    print(f"Aceleracion de cada joint: {acc[i]}")
 
             else:
                 for i, joint_id in enumerate(joint_indices):
