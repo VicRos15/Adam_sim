@@ -16,7 +16,7 @@ class ADAM:
         #Change simulation mode
         self.useSimulation = useSimulation
         self.useRealTimeSimulation = useRealTimeSimulation
-        self.t = 0.01
+        self.t = 0.1
 
         self.robot_id = p.loadURDF(urdf_path, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) #flags=p.URDF_USE_SELF_COLLISION,# flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) # Cambiar la posición si es necesario
         
@@ -47,12 +47,21 @@ class ADAM:
         # Definir los índices de los brazos (esto depende de tu URDF)
         self.ur3_right_arm_joints = [20,21,22,23,24,25]  # Brazo derecho
         self.ur3_left_arm_joints = [31,32,33,34,35,36]  # Brazo izquierdo
+
         self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,29,30,37,38,39] #Cuerpo 
         self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
 
+        self.arm_joints = 6
+
+
+        #Current pos, vel
+        self.pos_act = []
+        self.vel_act = []
+        self.acc_joints = []
+
 
         #Calculo de la dinamica inversa
-        self.InverseDynamics = True
+        self.InverseDynamics = False
 
 
 
@@ -101,7 +110,38 @@ class ADAM:
                 torque_IK[i] = max_torque if torque > 0 else -max_torque
 
         return torque_IK
+    
+
+    # Forward dynamics
+    def Calculate_forward_dynamics(self, arm, torques):
+        if arm == "right":
+            joints = self.ur3_right_arm_joints
+
+        elif arm == "left":
+            joints = self.ur3_left_arm_joints
+
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+
+        joints_acc = []
+        for i in joints:
+            dynamics_info = p.getDynamicsInfo(self.robot_id,i)
+            inertia_diag = dynamics_info[2]
+
+            if inertia_diag[2] > 0:
+                joint_acceleration = torques[i] / inertia_diag[2] #Se utiliza inertia_diag[2] puesto que el eje de rotacion es el z
+            else:
+                joint_acceleration = 0
+
+            joints_acc.append(joint_acceleration)
         
+        #Update current pos, vel 
+        self.pos_act,self.vel_act = self.get_joints_pos_vel(arm)
+
+        
+        return joints_acc
+
+
 
     def create_sliders(self):
         # Crear sliders para controlar las articulaciones
@@ -203,6 +243,7 @@ class ADAM:
     
     
     def get_joints_pos_vel(self, arm):
+
         joint_positions = []
         joint_velocities = []
 
@@ -293,18 +334,32 @@ class ADAM:
 
             if self.InverseDynamics:
                 #Calculo de la dinamica inversa
-                torque_ID = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
+                torque = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
 
                 for i, joint_id in enumerate(joint_indices):
-                    p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque_ID[i])
-                    print(f"Brazo {arm} movido a la posición: {target_position}.")
-                return True               
+                    p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque[i])
+                    # print(f"Brazo {arm} movido a la posición: {target_position}.")
+
+                #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
+                acc = self.Calculate_forward_dynamics(torque,arm)
+
+                #Actualizamos los valores de vel actual y pos actual del sistema
+                pos_act, vel_act = self.get_joints_pos_vel(arm)
+                for i, joint_id in enumerate(joint_indices):
+                    # Integración de la velocidad y posición usando la aceleración
+                    vel_act[i] += acc[i] * self.t
+                    pos_act[i] += vel_act[i] * self.t
+
+                    #Se actualizan manualmente los valores de pos y vel actuales
+                    p.resetJointState(self.robot_id, joint_id, pos_act[i], vel_act[i])
+
+
 
             else:
                 for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
                     # print(f"Brazo {arm} movido a la posición: {target_position}.")
-                return True
+        return True
 
     
     def move_arm_to_multiple_poses(self, arm, poses):
@@ -360,7 +415,7 @@ robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_descri
 robot_stl_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/torso_sin_hombros.stl"
 
 
-adam_robot = ADAM(robot_urdf_path,robot_stl_path,1,0)
+adam_robot = ADAM(robot_urdf_path,robot_stl_path,0,1)
 adam_robot.create_sliders()
 
 adam_robot.run_simulation()
