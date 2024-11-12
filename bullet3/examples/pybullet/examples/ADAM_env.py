@@ -278,22 +278,14 @@ class ADAM:
         return joint_positions, joint_velocities
 
 
+    # Cinemática directa
+    def Calculate_forward_kinematics(self, arm):
+        pos, ori = self.get_end_effector_pose(arm)
 
-    def move_joints_to_angles(self, arm, joint_angles):
-        
-        if arm == "left":
-            joint_indices = self.ur3_left_arm_joints
-        elif arm == "right":
-            joint_indices = self.ur3_right_arm_joints
-        else:
-            raise ValueError("El brazo debe ser 'left' o 'right'.")
-
-        #Asignar los ángulos a cada articulación del brazo
-        for i, joint_angle in enumerate(joint_angles):
-            p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
+        return pos, ori
 
 
-    #Cálculo de la cinématica inversa
+    # Cálculo de la cinématica inversa
     def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
         
         if null:
@@ -308,6 +300,21 @@ class ADAM:
                                                     restPoses=None)
         return ik_solution
     
+    def move_joints_to_angles(self, arm, joint_angles):
+        
+        if arm == "left":
+            joint_indices = self.ur3_left_arm_joints
+        elif arm == "right":
+            joint_indices = self.ur3_right_arm_joints
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+
+        #Asignar los ángulos a cada articulación del brazo
+        for i, joint_angle in enumerate(joint_angles):
+            p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
+
+        #Calculo de la  cinematica directa
+        pos_ee, ori_ee = self.Calculate_forward_kinematics(arm)
 
     def move_arm_to_pose(self, arm, pose):
         #Descomponemos la pose
@@ -408,7 +415,8 @@ class ADAM:
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
 
-            self.move_arm_to_multiple_poses("left",poses)
+            # self.move_arm_to_multiple_poses("left",poses)
+            self.apply_slider_values()
 
             if not self.useRealTimeSimulation:
                 time.sleep(self.t)
