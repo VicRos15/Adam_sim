@@ -782,7 +782,7 @@
     <child link="rb1_right_arm_shoulder_link"/>
     <origin rpy="0 0 3.141592653589793" xyz="0 0 0.1519"/>
     <axis xyz="0 0 1"/>
-    <limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.16"/>
+    <limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.16"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_shoulder_link">
@@ -812,7 +812,7 @@
     <child link="rb1_right_arm_upper_arm_link"/>
     <origin rpy="1.570796327 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.16"/>
+    <limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.16"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_upper_arm_link">
@@ -842,7 +842,7 @@
     <child link="rb1_right_arm_forearm_link"/>
     <origin rpy="0 0 0" xyz="-0.24365 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit effort="150.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.15"/>
+    <limit effort="150.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.15"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_forearm_link">
@@ -872,7 +872,7 @@
     <child link="rb1_right_arm_wrist_1_link"/>
     <origin rpy="0 0 0" xyz="-0.21325 0 0.11235"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_wrist_1_link">
@@ -902,7 +902,7 @@
     <child link="rb1_right_arm_wrist_2_link"/>
     <origin rpy="1.570796327 0 0" xyz="0 -0.08535 -1.750557762378351e-11"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_wrist_2_link">
@@ -932,7 +932,7 @@
     <child link="rb1_right_arm_wrist_3_link"/>
     <origin rpy="1.570796326589793 3.141592653589793 3.141592653589793" xyz="0 0.0819 -1.679797079540562e-11"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_right_arm_wrist_3_link">
@@ -1113,7 +1113,7 @@
     <child link="rb1_left_arm_shoulder_link"/>
     <origin rpy="0 0 3.141592653589793" xyz="0 0 0.1519"/>
     <axis xyz="0 0 1"/>
-    <limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.16"/>
+    <limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.16"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_shoulder_link">
@@ -1143,7 +1143,7 @@
     <child link="rb1_left_arm_upper_arm_link"/>
     <origin rpy="1.570796327 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.16"/>
+    <limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.16"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_upper_arm_link">
@@ -1173,7 +1173,7 @@
     <child link="rb1_left_arm_forearm_link"/>
     <origin rpy="0 0 0" xyz="-0.24365 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit effort="150.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.15"/>
+    <limit effort="150.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.15"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_forearm_link">
@@ -1203,7 +1203,7 @@
     <child link="rb1_left_arm_wrist_1_link"/>
     <origin rpy="0 0 0" xyz="-0.21325 0 0.11235"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_wrist_1_link">
@@ -1233,7 +1233,7 @@
     <child link="rb1_left_arm_wrist_2_link"/>
     <origin rpy="1.570796327 0 0" xyz="0 -0.08535 -1.750557762378351e-11"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_wrist_2_link">
@@ -1263,7 +1263,7 @@
     <child link="rb1_left_arm_wrist_3_link"/>
     <origin rpy="1.570796326589793 3.141592653589793 3.141592653589793" xyz="0 0.0819 -1.679797079540562e-11"/>
     <axis xyz="0 0 1"/>
-    <limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.2"/>
+    <limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="rb1_left_arm_wrist_3_link">

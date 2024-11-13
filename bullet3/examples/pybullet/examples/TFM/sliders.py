@@ -1,11 +1,11 @@
-from collisions import Collisions
+from Adam import ADAM
 import pybullet as p
 import numpy as np
 import time
 
 
 #Class for the sliders
-class Sliders(Collisions):
+class Sliders(ADAM):
 
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)

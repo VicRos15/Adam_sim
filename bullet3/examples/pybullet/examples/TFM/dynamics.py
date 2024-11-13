@@ -8,6 +8,27 @@ class Dynamics(ADAM):
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)
 
+    
+    def get_joints_pos_vel(self, arm):
+
+        joint_positions = []
+        joint_velocities = []
+
+        # Obtener los índices del brazo seleccionado
+        if arm == "left":
+            joint_indices = self.ur3_left_arm_joints
+        elif arm == "right":
+            joint_indices = self.ur3_right_arm_joints
+        else:
+            raise ValueError("El brazo debe ser 'left' o 'right'.")
+
+        # Leer las posiciones articulares
+        for joint_id in joint_indices:
+            joint_state = p.getJointState(self.robot_id, joint_id)
+            joint_positions.append(joint_state[0])  # La posición de la articulación está en el índice 0
+            joint_velocities.append(joint_state[1]) # La velocidad de la articulacion en el indice 1
+
+        return joint_positions, joint_velocities
 
     
     # Forward dynamics

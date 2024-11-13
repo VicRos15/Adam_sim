@@ -13,7 +13,7 @@ class ADAM:
         #Change simulation mode
         self.useSimulation = useSimulation
         self.useRealTimeSimulation = useRealTimeSimulation
-        self.t = 0.1
+        self.t = 0.05
 
         self.robot_id = p.loadURDF(urdf_path, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) #flags=p.URDF_USE_SELF_COLLISION,# flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) # Cambiar la posición si es necesario
         
@@ -60,41 +60,63 @@ class ADAM:
         #Calculo de la dinamica inversa
         self.InverseDynamics = False
 
+    #Collisions
+    def detect_autocollisions(self):
+        # Colisiones entre los brazos
+        for left_joint in self.ur3_left_arm_joints:
+            for right_joint in self.ur3_right_arm_joints:
+                contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=right_joint)
+                if len(contact_points) > 0:
+                    print("Colisión entre brazos detectada")
+                    return True
+
+        #Colisiones cuerpo-brazo izquierdo
+        for left_joint in self.ur3_left_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=left_joint)
+            if len(contact_points) > 0:
+                print("Colisión entre brazo izq-cuerpo")
+                return True
+        
+        #Colisiones cuerpo-brazo derecho
+        for right_joint in self.ur3_right_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=right_joint)
+            if len(contact_points) > 0:
+                print("Colisión entre brazo der-cuerpo")
+                return True
+
+        return False  # No hay colisiones
+    
+    def detect_collision_with_objects(self, object_id):
+        #! TODO: Ver si se quiere dectectar la colision con el rest odel cuerpo
+        # Detectar colisiones del brazo izquierdo o derecho con otros objetos en la escena
+        left_arm_collision = False
+        right_arm_collision = False
+
+        # Comprobar colisiones del brazo izquierdo con el objeto
+        for left_joint in self.ur3_left_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=left_joint)
+            if len(contact_points) > 0:
+                left_arm_collision = True
+
+        # Comprobar colisiones del brazo derecho con el objeto
+        for right_joint in self.ur3_right_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=right_joint)
+            if len(contact_points) > 0:
+                right_arm_collision = True
 
 
-    def get_end_effector_pose(self, arm):
-        # Obtener la posición del efector final del brazo
-        if arm == "left":
-            end_effector_index = self.ur3_left_arm_joints[-1]
-        elif arm == "right":
-            end_effector_index = self.ur3_right_arm_joints[-1]
-        else:
-            raise ValueError("El brazo debe ser 'left' o 'right'.")
+        #cOMPROBAR OBJETO CON CUERPO
+        for right_joint in self.ur3_right_arm_joints:
+            contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=right_joint)
+            if len(contact_points) > 0:
+                right_arm_collision = True
+ 
+        #Que nos devuelva puntos de contacto(articulaciones) y además un true o false
+        return left_arm_collision, right_arm_collision
 
-        link_state = p.getLinkState(self.robot_id, end_effector_index)
-        return link_state[4],link_state[5]
+
     
 
-    def get_joints_pos_vel(self, arm):
-
-        joint_positions = []
-        joint_velocities = []
-
-        # Obtener los índices del brazo seleccionado
-        if arm == "left":
-            joint_indices = self.ur3_left_arm_joints
-        elif arm == "right":
-            joint_indices = self.ur3_right_arm_joints
-        else:
-            raise ValueError("El brazo debe ser 'left' o 'right'.")
-
-        # Leer las posiciones articulares
-        for joint_id in joint_indices:
-            joint_state = p.getJointState(self.robot_id, joint_id)
-            joint_positions.append(joint_state[0])  # La posición de la articulación está en el índice 0
-            joint_velocities.append(joint_state[1]) # La velocidad de la articulacion en el indice 1
-
-        return joint_positions, joint_velocities
 
     def print_robot_info(self):
         num_joints = p.getNumJoints(self.robot_id)
