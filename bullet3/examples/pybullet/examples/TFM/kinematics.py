@@ -59,6 +59,8 @@ class Kinematics(Dynamics):
 
         # Inverse kinematics for the UR3 robot
         ik_solution = self.Calculate_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
+        # for i in range (len(ik_solution)):
+        #     print(f"joint {i}, valor {ik_solution[i]}")
         
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
@@ -70,6 +72,8 @@ class Kinematics(Dynamics):
             if self.InverseDynamics:
                 #Calculo de la dinamica inversa
                 torque = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
+                # for i in range(len(torque)):
+                #     print(f"Fuerza aplicada en cada articulacion {torque[i]}")
 
                 for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque[i])
@@ -77,8 +81,8 @@ class Kinematics(Dynamics):
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
                 acc = self.Calculate_forward_dynamics(torque,arm)
-                for i in range(len(acc)):
-                    print(f"Aceleracion de cada joint: {acc[i]}")
+                # for i in range(len(acc)):
+                    # print(f"Aceleracion de cada joint: {acc[i]}")
 
             else:
                 for i, joint_id in enumerate(joint_indices):
@@ -87,16 +91,30 @@ class Kinematics(Dynamics):
         return True
 
     
-    def move_arm_to_multiple_poses(self, arm, poses):
+    def move_arm_to_multiple_poses(self, arm, poses, poses2=None):
     
-        for pose in poses:
-            self.detect_autocollisions()
-            self.move_arm_to_pose(arm, pose)
+        if arm == "left" or arm == "right":
+            for pose in poses:
+                self.detect_autocollisions()
+                self.move_arm_to_pose(arm, pose)
 
-            # Avanzar la simulación para que los movimientos se apliquen
-            if not self.useRealTimeSimulation:
-                p.stepSimulation()
-                time.sleep(self.t)
+                # Avanzar la simulación para que los movimientos se apliquen
+                if not self.useRealTimeSimulation:
+                    p.stepSimulation()
+                    time.sleep(self.t)
+        if arm == "both":
+            if poses2 is None:
+                raise ValueError("Debes proporcionar poses2 para mover ambos brazos")
+
+            for pose_left, pose_right in zip(poses, poses2):
+                self.detect_autocollisions()
+                self.move_arm_to_pose("left", pose_left)
+                self.move_arm_to_pose("right", pose_right)
+
+                # Avanzar la simulación para que los movimientos se apliquen
+                if not self.useRealTimeSimulation:
+                    p.stepSimulation()
+                    time.sleep(self.t)
 
     def move_joints_to_angles(self, arm, joint_angles):
         

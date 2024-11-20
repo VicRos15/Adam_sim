@@ -1,5 +1,6 @@
 import pybullet as p
 import pybullet_data
+import math
 
 
 #Class for ADAM info
@@ -18,6 +19,9 @@ class ADAM:
         self.robot_id = p.loadURDF(urdf_path, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) #flags=p.URDF_USE_SELF_COLLISION,# flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT) # Cambiar la posición si es necesario
         
         #Creamos el objeto sin hombros
+        #Orientacion del stl
+        rotation_quaternion = p.getQuaternionFromEuler([math.pi/2, 0, math.pi])
+
         self.robot_shape = p.createCollisionShape(shapeType=p.GEOM_MESH,
                                             fileName=robot_stl_path,
                                             meshScale=[1, 1, 1])
@@ -27,7 +31,8 @@ class ADAM:
         self.robot_stl_id = p.createMultiBody(baseMass=0,              
                                             baseCollisionShapeIndex=self.robot_shape,
                                             baseVisualShapeIndex=self.robot_visual_shape,
-                                            basePosition=[-0.10, 0, 0.73])    # Cambia la posición 
+                                            basePosition=[-0.10, 0.0, 0.54],
+                                            baseOrientation = rotation_quaternion)    # Cambia la posición 
 
         #Definir null space
         #lower limits for null space
@@ -65,7 +70,7 @@ class ADAM:
         # Colisiones entre los brazos
         for left_joint in self.ur3_left_arm_joints:
             for right_joint in self.ur3_right_arm_joints:
-                contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0.001, linkIndexA=left_joint, linkIndexB=right_joint)
+                contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0, linkIndexA=left_joint, linkIndexB=right_joint)
                 if len(contact_points) > 0:
                     print("Colisión entre brazos detectada")
                     return True

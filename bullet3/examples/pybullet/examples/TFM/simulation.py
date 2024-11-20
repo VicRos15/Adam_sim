@@ -28,9 +28,9 @@ class Simulation(Sliders,Kinematics):
         initial_right_pose = [0.66,-2.26,-0.70,-0.14,2.55,-1.15]
 
         #Cargamos el archivo de matlab
-        positions_data = scipy.io.loadmat('/home/victor/TFM/Adam_sim/bullet3/examples/pybullet/examples/Test_matlab/positions2.mat')
+        positions_data = scipy.io.loadmat('/home/victor/TFM/Adam_sim/bullet3/examples/pybullet/examples/Test_matlab/positions.mat')
         positions = positions_data['positionR']
-        orientations_data = scipy.io.loadmat('/home/victor/TFM/Adam_sim/bullet3/examples/pybullet/examples/Test_matlab/orientations2.mat')
+        orientations_data = scipy.io.loadmat('/home/victor/TFM/Adam_sim/bullet3/examples/pybullet/examples/Test_matlab/orientations.mat')
         orientations = orientations_data['quaternionR']
         
         poses = [
@@ -48,7 +48,7 @@ class Simulation(Sliders,Kinematics):
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
 
-            self.move_arm_to_multiple_poses("right",poses)
+            self.move_arm_to_multiple_poses("both", poses, poses)
             # self.apply_slider_values()
 
             if not self.useRealTimeSimulation:
@@ -57,8 +57,7 @@ class Simulation(Sliders,Kinematics):
 
 # Programa principal
 robot_urdf_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
-# robot_stl_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/torso_sin_hombros.stl"
-robot_stl_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/robot_simplificado.stl"
+robot_stl_path = "/home/victor/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/adam_model.stl"
 
 
 adam_robot = Simulation(robot_urdf_path,robot_stl_path,1,0)
