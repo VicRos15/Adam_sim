@@ -44,7 +44,7 @@ class ADAM:
         #restposes for null space
         self.rp = [0]*6
         #joint damping coefficents
-        self.jd = [0.1]*6
+        self.jd = [0.1]*21
 
         # Definir los índices de los brazos (esto depende de tu URDF)
         self.ur3_right_arm_joints = [20,21,22,23,24,25]  # Brazo derecho
@@ -63,7 +63,7 @@ class ADAM:
 
 
         #Calculo de la dinamica inversa
-        self.InverseDynamics = False
+        self.Dynamics = False
 
     #Collisions
     def detect_autocollisions(self):
@@ -132,3 +132,5 @@ class ADAM:
             joint_id = joint_info[0]
             joint_name = joint_info[1].decode("utf-8")
             print(f"ID: {joint_id}, Nombre: {joint_name}")
+
+

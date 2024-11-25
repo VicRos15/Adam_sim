@@ -24,13 +24,14 @@ class Kinematics(Dynamics):
                                                     jointRanges=self.jr,
                                                     restPoses=self.rp)
         else:
-            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=None,
-                                                    upperLimits=None,
-                                                    jointRanges=None,
-                                                    restPoses=None)
+            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,jointDamping=self.jd,
+                                                solver=0,
+                                                maxNumIterations=100,
+                                                residualThreshold=.01)
         return ik_solution
     
-    def move_arm_to_pose(self, arm, pose):
+    def move_arm_to_pose(self, arm, pose, accurate=None, threshold=None):
+
         #Descomponemos la pose
         target_position = pose[0]
         target_orientation = pose[1]
@@ -56,20 +57,19 @@ class Kinematics(Dynamics):
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
 
-
         # Inverse kinematics for the UR3 robot
         ik_solution = self.Calculate_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
-        # for i in range (len(ik_solution)):
-        #     print(f"joint {i}, valor {ik_solution[i]}")
-        
+
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
             print(f"Posición no alcanzable por el brazo {arm}.")
             return False
+        
+
         # Si la solución es válida, mover el brazo
         else:
 
-            if self.InverseDynamics:
+            if self.Dynamics:
                 #Calculo de la dinamica inversa
                 torque = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
                 # for i in range(len(torque)):
@@ -81,27 +81,30 @@ class Kinematics(Dynamics):
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
                 acc = self.Calculate_forward_dynamics(torque,arm)
-                # for i in range(len(acc)):
-                    # print(f"Aceleracion de cada joint: {acc[i]}")
 
             else:
-                for i, joint_id in enumerate(joint_indices):
-                    p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
-                    # print(f"Brazo {arm} movido a la posición: {target_position}.")
+
+                if accurate is not None:
+                    threshold2=threshold*threshold
+                    closeEnough=False
+                    while not closeEnough:
+                        closeEnough = self.close_enough_pose(joint_indices, ik_solution, offset_iksol, target_position, threshold2)
+        
+                else:
+                    for i, joint_id in enumerate(joint_indices):
+                        p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
+
         return True
 
+
     
-    def move_arm_to_multiple_poses(self, arm, poses, poses2=None):
+    def move_arm_to_multiple_poses(self, arm, poses, poses2=None, acc=None, threshold=None):
     
         if arm == "left" or arm == "right":
             for pose in poses:
                 self.detect_autocollisions()
-                self.move_arm_to_pose(arm, pose)
+                self.move_arm_to_pose(arm, pose, acc, threshold)
 
-                # Avanzar la simulación para que los movimientos se apliquen
-                if not self.useRealTimeSimulation:
-                    p.stepSimulation()
-                    time.sleep(self.t)
         if arm == "both":
             if poses2 is None:
                 raise ValueError("Debes proporcionar poses2 para mover ambos brazos")
@@ -111,10 +114,28 @@ class Kinematics(Dynamics):
                 self.move_arm_to_pose("left", pose_left)
                 self.move_arm_to_pose("right", pose_right)
 
-                # Avanzar la simulación para que los movimientos se apliquen
-                if not self.useRealTimeSimulation:
-                    p.stepSimulation()
-                    time.sleep(self.t)
+        # Avanzar la simulación para que los movimientos se apliquen
+        if not self.useRealTimeSimulation:
+            p.stepSimulation()
+            time.sleep(self.t)
+
+    def close_enough_pose(self, joint_indices, ik_solution, offset_iksol, targetPos, threshold):
+        closeEnough = False
+        dist2 = 1e30
+        while (not closeEnough):
+            for i, joint_id in enumerate(joint_indices):
+                p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
+
+            ls = p.getLinkState(self.robot_id, joint_indices[-1])
+            newPos = ls[4] # End-Effector position
+            diff = [targetPos[0] - newPos[0], targetPos[1] - newPos[1], targetPos[2] - newPos[2]]
+            dist2 = (diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2])
+            closeEnough = (dist2 < threshold)
+            if not self.useRealTimeSimulation:
+                p.stepSimulation()
+                time.sleep(self.t)
+
+        return closeEnough
 
     def move_joints_to_angles(self, arm, joint_angles):
         
@@ -173,3 +194,4 @@ class Kinematics(Dynamics):
 
         link_state = p.getLinkState(self.robot_id, end_effector_index)
         return link_state[4],link_state[5]
+
