@@ -38,6 +38,7 @@ class Simulation(Sliders,Kinematics):
         for i in range(positions.shape[0])]
 
 
+
         for i in range(10):
             self.initial_arm_pose("right",initial_right_pose)
             self.initial_arm_pose("left",initial_left_pose)
@@ -48,7 +49,7 @@ class Simulation(Sliders,Kinematics):
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
 
-            self.move_arm_to_multiple_poses("right", poses, acc=True, threshold=1.0)#, )
+            self.move_arm_to_multiple_poses("right", poses)
             # self.apply_slider_values()
 
             if not self.useRealTimeSimulation:

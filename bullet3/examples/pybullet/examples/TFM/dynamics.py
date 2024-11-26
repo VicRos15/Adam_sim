@@ -75,56 +75,47 @@ class Dynamics(ADAM):
         return joints_acc
     
     # Inverse dynamics
-    def Calculate_inverse_dynamics (self,target_pose, arm, offset):
+    def Calculate_inverse_dynamics (self, pos_des, arm):
+        
         #Calculate current pos, vel 
         if arm == "right" or arm == "left":
-            pos_act,vel_act = self.get_joints_pos_vel(arm)
+            pos_act, vel_act = self.get_joints_pos_vel(arm)
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
         
-        # for i in range(len(pos_act)):
-        #     print(f"Velocidad es de tamaño {i} y vale {vel_act[i]}")
-        #     print(f"Posicion es de tamaño {i} y vale {pos_act[i]}")
-        # if len(target_pose) < len(self.ur3_left_arm_joints):
-        #     raise ValueError("target_pose no tiene suficientes elementos para el número de articulaciones.")
+        dt = self.t #derivacion discreta
+        vel_des =  []
+        acc_des = []
+        for i in range(len(pos_des)):
+            vel_des.append((pos_act[i]-pos_des[i])/dt)
+            acc_des.append((vel_act[i]-vel_des[i])/dt)
+            print(f"aceleración deseada: {acc_des[i]}")
+    
         
-        # Goal pose
-        pos_des = []
-        for i in range(len(self.ur3_left_arm_joints)):
-            pos_des.append(target_pose[i])
-
-        #Implement a PD controller to calculate desired acceleration
-        #PD parameters
-        kp = 100
-        kd = 10
-        #PD controller
-        acc_des=[]
-        for i in range(len(vel_act)):
-            acc_des.append(kp*(pos_des[i]-pos_act[i])-kd*vel_act[i])
         
-        for i in range(len(acc_des)):
-            print(f"ACeleracion es de tamaño {i} y vale {acc_des[i]}")
-
         #Calculate inverse dynamics
         try:
             torque_IK = []
-            torque_all = list(p.calculateInverseDynamics(self.robot_id, pos_act, vel_act, acc_des, flags=1))
+            torque_all = list(p.calculateInverseDynamics(self.robot_id, pos_des, vel_des, acc_des, flags=1))
             for i in range (len(torque_all)):
                 print(f"torque en articulacion {i} es de {torque_all[i]}")
-            for i in range(len(self.ur3_left_arm_joints)):
-                torque_IK.append(torque_all[i+offset])
+            for i in range (len(pos_des)):
+                torque_IK.append(torque_all[i+15])
+                print(f"torque aplicado en las articulaciones: {torque_IK[i]}")
+                
         except Exception as e:
             raise SystemError(f"Error en calculateInverseDynamics: {e}")
 
         # Compare torque calculated with the maximum torque 
-        for i, torque in enumerate(torque_IK):
-            joint_info = p.getJointInfo(self.robot_id,i)
-            max_torque = joint_info[10] 
+        # for i, torque in enumerate(torque_IK):
+        #     joint_info = p.getJointInfo(self.robot_id,i)
+        #     max_torque = joint_info[10] 
 
-            if abs(torque) > max_torque:
-                torque_IK[i] = max_torque if torque > 0 else -max_torque
-            # print(f"Torque aplicado en la joint {i}: {torque_IK[i]}")
+        #     if abs(torque) > max_torque:
+        #         torque_IK[i] = max_torque if torque > 0 else -max_torque
+        #     # print(f"Torque aplicado en la joint {i}: {torque_IK[i]}")
 
         return torque_IK
+    
     
 

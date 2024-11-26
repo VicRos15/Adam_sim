@@ -63,7 +63,7 @@ class ADAM:
 
 
         #Calculo de la dinamica inversa
-        self.Dynamics = False
+        self.Dynamics = True
 
     #Collisions
     def detect_autocollisions(self):

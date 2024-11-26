@@ -30,11 +30,15 @@ class Kinematics(Dynamics):
                                                 residualThreshold=.01)
         return ik_solution
     
-    def move_arm_to_pose(self, arm, pose, accurate=None, threshold=None):
+    def move_arm_to_pose(self, arm, pose_des, accurate=None, threshold=None):
 
-        #Descomponemos la pose
-        target_position = pose[0]
-        target_orientation = pose[1]
+        # #Descomponemos la pose_actual
+        # actual_position = pose_act[0]
+        # actual_orientation = pose_act[1]
+
+        #Descomponemos la pose_des
+        target_position = pose_des[0]
+        target_orientation = pose_des[1]
         
         #Numero de articulaciones
         all_joints = list(range(p.getNumJoints(self.robot_id)))
@@ -59,6 +63,7 @@ class Kinematics(Dynamics):
 
         # Inverse kinematics for the UR3 robot
         ik_solution = self.Calculate_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
+    
 
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
         if ik_solution is None or any([math.isnan(val) for val in ik_solution]):
@@ -68,19 +73,23 @@ class Kinematics(Dynamics):
 
         # Si la solución es válida, mover el brazo
         else:
-
             if self.Dynamics:
                 #Calculo de la dinamica inversa
-                torque = self.Calculate_inverse_dynamics(ik_solution,arm,offset_iksol)
-                # for i in range(len(torque)):
-                #     print(f"Fuerza aplicada en cada articulacion {torque[i]}")
+                pos_des = []
+                for i in range(len(joint_indices)):
+                    pos_des.append(ik_solution[i+offset_iksol])
+
+                torque = self.Calculate_inverse_dynamics(pos_des,arm)
 
                 for i, joint_id in enumerate(joint_indices):
-                    p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, torque[i])
-                    # print(f"Brazo {arm} movido a la posición: {target_position}.")
+                      #set the joint friction
+                    p.setJointMotorControl2(self.robot_id, joint_id, p.VELOCITY_CONTROL, targetVelocity=0, force=20)
+                    #apply a joint torque
+                    p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, force=torque[i])
+                    p.stepSimulation()
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
-                acc = self.Calculate_forward_dynamics(torque,arm)
+                # acc = self.Calculate_forward_dynamics(torque,arm)
 
             else:
 
@@ -101,9 +110,17 @@ class Kinematics(Dynamics):
     def move_arm_to_multiple_poses(self, arm, poses, poses2=None, acc=None, threshold=None):
     
         if arm == "left" or arm == "right":
+            
             for pose in poses:
+                # position, orientation = self.get_end_effector_pose(arm)
+                # pose_act = [(position[0], position[1], position[2]), (orientation[1], orientation[2], orientation[3], orientation[0])]
                 self.detect_autocollisions()
                 self.move_arm_to_pose(arm, pose, acc, threshold)
+
+                # Avanzar la simulación para que los movimientos se apliquen
+                if not self.useRealTimeSimulation:
+                    p.stepSimulation()
+                    time.sleep(self.t)
 
         if arm == "both":
             if poses2 is None:
@@ -114,10 +131,12 @@ class Kinematics(Dynamics):
                 self.move_arm_to_pose("left", pose_left)
                 self.move_arm_to_pose("right", pose_right)
 
-        # Avanzar la simulación para que los movimientos se apliquen
-        if not self.useRealTimeSimulation:
-            p.stepSimulation()
-            time.sleep(self.t)
+                # Avanzar la simulación para que los movimientos se apliquen
+                if not self.useRealTimeSimulation:
+                    p.stepSimulation()
+                    time.sleep(self.t)
+
+
 
     def close_enough_pose(self, joint_indices, ik_solution, offset_iksol, targetPos, threshold):
         closeEnough = False
