@@ -36,10 +36,11 @@ class Simulation(Sliders,Kinematics):
         poses = [
         [(positions[i, 0], positions[i, 1], positions[i, 2]), (orientations[i, 1], orientations[i, 2], orientations[i, 3], orientations[i, 0])]
         for i in range(positions.shape[0])]
+        print("len de poses: ",len(poses))
 
 
 
-        for i in range(10):
+        for i in range(100):
             self.initial_arm_pose("right",initial_right_pose)
             self.initial_arm_pose("left",initial_left_pose)
 
@@ -49,7 +50,7 @@ class Simulation(Sliders,Kinematics):
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
 
-            self.move_arm_to_multiple_poses("right", poses)
+            self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
             # self.apply_slider_values()
 
             if not self.useRealTimeSimulation:
@@ -58,7 +59,7 @@ class Simulation(Sliders,Kinematics):
 
 # Programa principal
 robot_urdf_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
-robot_stl_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/adam_model.stl"
+robot_stl_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/adam_modelv3.stl"
 
 
 adam_robot = Simulation(robot_urdf_path,robot_stl_path,1,0)

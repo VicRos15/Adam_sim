@@ -1,5 +1,6 @@
 from Adam import ADAM 
 import pybullet as p
+import time
 
 
 #Class for dynamics
@@ -75,33 +76,39 @@ class Dynamics(ADAM):
         return joints_acc
     
     # Inverse dynamics
-    def Calculate_inverse_dynamics (self, pos_des, arm):
+    def Calculate_inverse_dynamics (self, pos_des, pos_act, vel_act, arm):
+        
         
         #Calculate current pos, vel 
         if arm == "right" or arm == "left":
-            pos_act, vel_act = self.get_joints_pos_vel(arm)
+            # pos_act, vel_act = self.get_joints_pos_vel(arm)
+            pass
         else:
             raise ValueError("El brazo debe ser 'left' o 'right'.")
         
-        dt = self.t #derivacion discreta
-        vel_des =  []
+        vel_des = []
         acc_des = []
+
         for i in range(len(pos_des)):
-            vel_des.append((pos_act[i]-pos_des[i])/dt)
-            acc_des.append((vel_act[i]-vel_des[i])/dt)
-            print(f"aceleración deseada: {acc_des[i]}")
-    
+            vel_des.append((pos_des[i]-pos_act[i])/self.dt)
+            acc_des.append((vel_des[i]-vel_act[i])/self.dt)
+            # print(f"aceleración deseada: {acc_des[i]}")
+            print(f"pos_des:   {pos_des[i]}")
+            print(f"pos_act:   {pos_act[i]}")
+        
         
         
         #Calculate inverse dynamics
         try:
             torque_IK = []
-            torque_all = list(p.calculateInverseDynamics(self.robot_id, pos_des, vel_des, acc_des, flags=1))
-            for i in range (len(torque_all)):
-                print(f"torque en articulacion {i} es de {torque_all[i]}")
+            torque_all = list(p.calculateInverseDynamics(self.robot_id, pos_act, vel_act, acc_des, flags=1))
+            # for i in range (len(torque_all)):
+                # print(f"torque en articulacion {i} es de {torque_all[i]}")
             for i in range (len(pos_des)):
                 torque_IK.append(torque_all[i+15])
-                print(f"torque aplicado en las articulaciones: {torque_IK[i]}")
+                # torque_IK.append(20)
+
+                # print(f"torque aplicado en las articulaciones: {torque_IK[i]}")
                 
         except Exception as e:
             raise SystemError(f"Error en calculateInverseDynamics: {e}")
@@ -115,7 +122,7 @@ class Dynamics(ADAM):
         #         torque_IK[i] = max_torque if torque > 0 else -max_torque
         #     # print(f"Torque aplicado en la joint {i}: {torque_IK[i]}")
 
-        return torque_IK
+        return torque_IK, vel_des, acc_des
     
     
 

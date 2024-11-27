@@ -30,11 +30,8 @@ class Kinematics(Dynamics):
                                                 residualThreshold=.01)
         return ik_solution
     
-    def move_arm_to_pose(self, arm, pose_des, accurate=None, threshold=None):
+    def move_arm_to_pose(self, arm, pose_des, pos_act=None, vel_act=None, accurate=None, threshold=None):
 
-        # #Descomponemos la pose_actual
-        # actual_position = pose_act[0]
-        # actual_orientation = pose_act[1]
 
         #Descomponemos la pose_des
         target_position = pose_des[0]
@@ -78,18 +75,20 @@ class Kinematics(Dynamics):
                 pos_des = []
                 for i in range(len(joint_indices)):
                     pos_des.append(ik_solution[i+offset_iksol])
+                
 
-                torque = self.Calculate_inverse_dynamics(pos_des,arm)
+                torque, vel_des, acc_des = self.Calculate_inverse_dynamics(pos_des, pos_act, vel_act, arm)
 
                 for i, joint_id in enumerate(joint_indices):
                       #set the joint friction
                     p.setJointMotorControl2(self.robot_id, joint_id, p.VELOCITY_CONTROL, targetVelocity=0, force=20)
                     #apply a joint torque
                     p.setJointMotorControl2(self.robot_id, joint_id, p.TORQUE_CONTROL, force=torque[i])
-                    p.stepSimulation()
+                p.stepSimulation()
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
-                # acc = self.Calculate_forward_dynamics(torque,arm)
+                acc = self.Calculate_forward_dynamics(torque,arm)
+                print(f"Aceleraciones dinamica directa:",acc)
 
             else:
 
@@ -103,20 +102,37 @@ class Kinematics(Dynamics):
                     for i, joint_id in enumerate(joint_indices):
                         p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
-        return True
+                pos_des = None
+                vel_des = None
+        
+        return ik_solution, pos_des, vel_des
 
 
     
-    def move_arm_to_multiple_poses(self, arm, poses, poses2=None, acc=None, threshold=None):
-    
+    def move_arm_to_multiple_poses(self, arm, poses, poses2=None, dynamic_time=None, acc=None, threshold=None):
+        
+        cont = 0
+        previous_pos = None
+        previous_vel = None
+        pos_act = None
+        vel_act = None
         if arm == "left" or arm == "right":
-            
-            for pose in poses:
-                # position, orientation = self.get_end_effector_pose(arm)
-                # pose_act = [(position[0], position[1], position[2]), (orientation[1], orientation[2], orientation[3], orientation[0])]
-                self.detect_autocollisions()
-                self.move_arm_to_pose(arm, pose, acc, threshold)
+            self.dt = (dynamic_time/(len(poses)) )+ 10e-30
 
+            for pose in poses:
+                if cont==0 and self.Dynamics==True:
+                    pos_act, vel_act = self.get_joints_pos_vel(arm)
+                elif cont!=0 and self.Dynamics==True:
+                    pos_act = previous_pos
+                    vel_act = previous_vel
+
+
+                self.detect_autocollisions()
+                ik, pos_prev, vel_prev = self.move_arm_to_pose(arm, pose, pos_act, vel_act, acc, threshold)
+
+                cont=cont+1
+                previous_pos = pos_prev
+                previous_vel = vel_prev
                 # Avanzar la simulación para que los movimientos se apliquen
                 if not self.useRealTimeSimulation:
                     p.stepSimulation()

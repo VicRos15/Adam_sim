@@ -20,7 +20,7 @@ class ADAM:
         
         #Creamos el objeto sin hombros
         #Orientacion del stl
-        rotation_quaternion = p.getQuaternionFromEuler([math.pi/2, 0, math.pi])
+        rotation_quaternion = p.getQuaternionFromEuler([0, 0, 0])
 
         self.robot_shape = p.createCollisionShape(shapeType=p.GEOM_MESH,
                                             fileName=robot_stl_path,
@@ -63,7 +63,9 @@ class ADAM:
 
 
         #Calculo de la dinamica inversa
-        self.Dynamics = True
+        self.Dynamics = False
+
+        self.dt = None
 
     #Collisions
     def detect_autocollisions(self):
