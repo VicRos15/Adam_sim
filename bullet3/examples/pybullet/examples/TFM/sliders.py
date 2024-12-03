@@ -1,4 +1,4 @@
-from Adam import ADAM
+from adam import ADAM
 import pybullet as p
 import numpy as np
 import time

@@ -6,7 +6,7 @@ import math
 #Class for ADAM info
 class ADAM:
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
-        # Inicializar PyBullet y cargar el robot
+        # Cargar el robot
         self.physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -9.81)
@@ -62,10 +62,17 @@ class ADAM:
         self.acc_joints = []
 
 
-        #Calculo de la dinamica inversa
+        #Calculo de dinamica
         self.Dynamics = False
-
         self.dt = None
+
+        #Topics /right_joints /left_joints
+        self.right_joints=None
+        self.left_joints=None
+        self.pub_right = False
+        self.pub_left = False
+
+
 
     #Collisions
     def detect_autocollisions(self):

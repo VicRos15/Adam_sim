@@ -19,12 +19,12 @@ class Kinematics(Dynamics):
     def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
         
         if null:
-            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
+            ik_solution = p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
                                                     upperLimits=self.ul,
                                                     jointRanges=self.jr,
                                                     restPoses=self.rp)
         else:
-            ik_solution= p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,jointDamping=self.jd,
+            ik_solution = p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,jointDamping=self.jd,
                                                 solver=0,
                                                 maxNumIterations=100,
                                                 residualThreshold=.01)
@@ -67,16 +67,14 @@ class Kinematics(Dynamics):
             print(f"Posición no alcanzable por el brazo {arm}.")
             return False
         
+        pos_des = []
+        for i in range(len(joint_indices)):
+            pos_des.append(ik_solution[i+offset_iksol])
 
         # Si la solución es válida, mover el brazo
         else:
             if self.Dynamics:
                 #Calculo de la dinamica inversa
-                pos_des = []
-                for i in range(len(joint_indices)):
-                    pos_des.append(ik_solution[i+offset_iksol])
-                
-
                 torque, vel_des, acc_des = self.Calculate_inverse_dynamics(pos_des, pos_act, vel_act, arm)
 
                 for i, joint_id in enumerate(joint_indices):
@@ -102,7 +100,6 @@ class Kinematics(Dynamics):
                     for i, joint_id in enumerate(joint_indices):
                         p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
-                pos_des = None
                 vel_des = None
         
         return ik_solution, pos_des, vel_des
@@ -118,6 +115,11 @@ class Kinematics(Dynamics):
         vel_act = None
         if arm == "left" or arm == "right":
             self.dt = (dynamic_time/(len(poses)) )+ 10e-30
+            if arm =="left":
+                self.pub_left=True
+                
+            else:
+                self.pub_right=True
 
             for pose in poses:
                 if cont==0 and self.Dynamics==True:
@@ -130,6 +132,11 @@ class Kinematics(Dynamics):
                 self.detect_autocollisions()
                 ik, pos_prev, vel_prev = self.move_arm_to_pose(arm, pose, pos_act, vel_act, acc, threshold)
 
+                if arm =="left":
+                    self.left_joints=pos_prev
+                else:
+                    self.right_joints=pos_prev
+
                 cont=cont+1
                 previous_pos = pos_prev
                 previous_vel = vel_prev
@@ -137,8 +144,13 @@ class Kinematics(Dynamics):
                 if not self.useRealTimeSimulation:
                     p.stepSimulation()
                     time.sleep(self.t)
+            
+            self.pub_left, self.pub_right = False, False
+
 
         if arm == "both":
+            self.pub_right, self.pub_left = True, True
+
             if poses2 is None:
                 raise ValueError("Debes proporcionar poses2 para mover ambos brazos")
 
@@ -151,6 +163,9 @@ class Kinematics(Dynamics):
                 if not self.useRealTimeSimulation:
                     p.stepSimulation()
                     time.sleep(self.t)
+            
+            self.pub_left, self.pub_right = False, False
+
 
 
 

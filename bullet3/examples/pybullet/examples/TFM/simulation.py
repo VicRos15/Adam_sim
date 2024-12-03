@@ -1,27 +1,23 @@
+#!/usr/bin/env python3
+
 from sliders import Sliders
 from kinematics import Kinematics
+from hands import Hands
 import time
 import pybullet as p
+import pybullet_data
 import scipy.io
-
+from connect_to_robot import Node
 
 #Class for simualtion
 class Simulation(Sliders,Kinematics):
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)
-    
+
     #! START SIMULATION
     def run_simulation(self):
 
         p.setRealTimeSimulation(self.useRealTimeSimulation)
-
-        #Poses comandadas
-        # poses = [
-        #     [[0.3368, 0.5086, 1.4509], p.getQuaternionFromEuler([-1.7339, 0.77, -1.8])],
-        #     [[0.338, 0.5789, 1.391], p.getQuaternionFromEuler([-1.709, 0.575, -1.764])],
-        #     [[0.4046, 0.54367, 1.3562], p.getQuaternionFromEuler([-1.842, 0.5423, 1.3562])],
-        #     [[0.483963,0.5057,1.2756], p.getQuaternionFromEuler([-1.9825, 0.3428, 2.1356])]
-        # ]
 
         #Initial_arm_poses
         initial_left_pose = [0.11,-1.96,-0.79,0.67,-0.08,-0.01]
@@ -38,9 +34,7 @@ class Simulation(Sliders,Kinematics):
         for i in range(positions.shape[0])]
         print("len de poses: ",len(poses))
 
-
-
-        for i in range(100):
+        for _ in range(100):
             self.initial_arm_pose("right",initial_right_pose)
             self.initial_arm_pose("left",initial_left_pose)
 
@@ -49,8 +43,16 @@ class Simulation(Sliders,Kinematics):
             #Inicializamos el tiempo de simulacion
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
+            
+            for pose in poses:
+                ik, pos_des, vel_des = self.move_arm_to_pose("right", pose)
+                node.publish_joints("right", pos_des)
 
-            self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
+                if not self.useRealTimeSimulation:
+                    p.stepSimulation()
+                    time.sleep(self.t)
+
+            # self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
             # self.apply_slider_values()
 
             if not self.useRealTimeSimulation:
@@ -64,5 +66,7 @@ robot_stl_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_descript
 
 adam_robot = Simulation(robot_urdf_path,robot_stl_path,1,0)
 adam_robot.create_sliders()
+
+node = Node(1) #Mode publisher
 
 adam_robot.run_simulation()
