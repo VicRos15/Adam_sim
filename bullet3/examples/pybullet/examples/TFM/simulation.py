@@ -8,6 +8,7 @@ import pybullet as p
 import pybullet_data
 import scipy.io
 from connect_to_robot import Node
+import rospy
 
 #Class for simualtion
 class Simulation(Sliders,Kinematics):
@@ -34,9 +35,10 @@ class Simulation(Sliders,Kinematics):
         for i in range(positions.shape[0])]
         print("len de poses: ",len(poses))
 
-        for _ in range(100):
-            self.initial_arm_pose("right",initial_right_pose)
-            self.initial_arm_pose("left",initial_left_pose)
+        # for _ in range(100):
+        #     self.initial_arm_pose("right",initial_right_pose)
+        #     self.initial_arm_pose("left",initial_left_pose)
+        node.read_joints("right")
 
         while True:
 
@@ -44,16 +46,22 @@ class Simulation(Sliders,Kinematics):
             if (self.useSimulation and self.useRealTimeSimulation==0):
                 p.stepSimulation()
             
-            for pose in poses:
-                ik, pos_des, vel_des = self.move_arm_to_pose("right", pose)
-                node.publish_joints("right", pos_des)
+            # for pose in poses:
+            #     ik, pos_des, vel_des = self.move_arm_to_pose("right", pose)
 
-                if not self.useRealTimeSimulation:
-                    p.stepSimulation()
-                    time.sleep(self.t)
+            #Publicamos los joints values en el brazo correpondiente
 
-            # self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
+            right_position = rospy.get_param('position_right')
+
+            print("joints right",right_position)
+                # if not self.useRealTimeSimulation:
+                #     p.stepSimulation()
+                #     time.sleep(self.t)
+
+            self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
             # self.apply_slider_values()
+                # self.detect_autocollisions()
+
 
             if not self.useRealTimeSimulation:
                 time.sleep(self.t)
@@ -61,12 +69,15 @@ class Simulation(Sliders,Kinematics):
 
 # Programa principal
 robot_urdf_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/robots/robot.urdf"
-robot_stl_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/adam_modelv3.stl"
+
+# hands_urdf_path = 
+robot_stl_path = "/home/vrosi/TFM/Adam_sim/paquetes_simulacion/rb1_base_description/meshes/others/adam_model.stl"
 
 
 adam_robot = Simulation(robot_urdf_path,robot_stl_path,1,0)
 adam_robot.create_sliders()
 
-node = Node(1) #Mode publisher
+node = Node() #Mode publisher
 
 adam_robot.run_simulation()
+# rospy.spin()

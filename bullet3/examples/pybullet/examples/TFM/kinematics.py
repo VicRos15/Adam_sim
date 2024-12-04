@@ -2,6 +2,7 @@ from dynamics import Dynamics
 import pybullet as p
 import time
 import math
+import rospy
 
 #Class for kinematics
 class Kinematics(Dynamics):
@@ -100,6 +101,8 @@ class Kinematics(Dynamics):
                     for i, joint_id in enumerate(joint_indices):
                         p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
+                right_position = rospy.get_param('position_right')
+                print("joints right",right_position)
                 vel_des = None
         
         return ik_solution, pos_des, vel_des

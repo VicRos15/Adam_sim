@@ -24,7 +24,8 @@ class ADAM:
 
         self.robot_shape = p.createCollisionShape(shapeType=p.GEOM_MESH,
                                             fileName=robot_stl_path,
-                                            meshScale=[1, 1, 1])
+                                            meshScale=[1, 1, 1],
+                                            flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
         self.robot_visual_shape = p.createVisualShape(shapeType=p.GEOM_MESH,
                                                     fileName=robot_stl_path,
                                                     meshScale=[1, 1, 1])  # Ajusta el escalado 
@@ -86,14 +87,14 @@ class ADAM:
 
         #Colisiones cuerpo-brazo izquierdo
         for left_joint in self.ur3_left_arm_joints:
-            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=left_joint)
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=left_joint)
             if len(contact_points) > 0:
                 print("Colisión entre brazo izq-cuerpo")
                 return True
         
         #Colisiones cuerpo-brazo derecho
         for right_joint in self.ur3_right_arm_joints:
-            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0, linkIndexA=right_joint)
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=right_joint)
             if len(contact_points) > 0:
                 print("Colisión entre brazo der-cuerpo")
                 return True
