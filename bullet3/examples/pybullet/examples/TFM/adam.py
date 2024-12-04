@@ -68,8 +68,8 @@ class ADAM:
         self.dt = None
 
         #Topics /right_joints /left_joints
-        self.right_joints=None
-        self.left_joints=None
+        self.right_joints=[]
+        self.left_joints=[]
         self.pub_right = False
         self.pub_left = False
 

@@ -101,8 +101,8 @@ class Kinematics(Dynamics):
                     for i, joint_id in enumerate(joint_indices):
                         p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
-                right_position = rospy.get_param('position_right')
-                print("joints right",right_position)
+                # right_position = rospy.get_param('position_right')
+                # print("joints right",right_position)
                 vel_des = None
         
         return ik_solution, pos_des, vel_des
@@ -136,9 +136,9 @@ class Kinematics(Dynamics):
                 ik, pos_prev, vel_prev = self.move_arm_to_pose(arm, pose, pos_act, vel_act, acc, threshold)
 
                 if arm =="left":
-                    self.left_joints=pos_prev
+                    self.left_joints.append(pos_prev)
                 else:
-                    self.right_joints=pos_prev
+                    self.right_joints.append(pos_prev)
 
                 cont=cont+1
                 previous_pos = pos_prev
@@ -148,8 +148,6 @@ class Kinematics(Dynamics):
                     p.stepSimulation()
                     time.sleep(self.t)
             
-            self.pub_left, self.pub_right = False, False
-
 
         if arm == "both":
             self.pub_right, self.pub_left = True, True
@@ -159,16 +157,16 @@ class Kinematics(Dynamics):
 
             for pose_left, pose_right in zip(poses, poses2):
                 self.detect_autocollisions()
-                self.move_arm_to_pose("left", pose_left)
-                self.move_arm_to_pose("right", pose_right)
+                ik, pos_left, vel_prev = self.move_arm_to_pose("left", pose_left, pos_act, vel_act, acc, threshold)
+                self.left_joints.append(pos_left)
+                ik, pos_right, vel_prev = self.move_arm_to_pose("right", pose_right, pos_act, vel_act, acc, threshold)
+                self.right_joints.append(pos_right)
 
                 # Avanzar la simulación para que los movimientos se apliquen
                 if not self.useRealTimeSimulation:
                     p.stepSimulation()
                     time.sleep(self.t)
             
-            self.pub_left, self.pub_right = False, False
-
 
 
 

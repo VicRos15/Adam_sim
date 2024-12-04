@@ -7,7 +7,7 @@ import time
 import pybullet as p
 import pybullet_data
 import scipy.io
-from connect_to_robot import Node
+from node_connection import Node
 import rospy
 
 #Class for simualtion
@@ -33,6 +33,8 @@ class Simulation(Sliders,Kinematics):
         poses = [
         [(positions[i, 0], positions[i, 1], positions[i, 2]), (orientations[i, 1], orientations[i, 2], orientations[i, 3], orientations[i, 0])]
         for i in range(positions.shape[0])]
+
+        poses2=poses
         print("len de poses: ",len(poses))
 
         # for _ in range(100):
@@ -40,31 +42,54 @@ class Simulation(Sliders,Kinematics):
         #     self.initial_arm_pose("left",initial_left_pose)
         node.read_joints("right")
 
-        while True:
+        
 
-            #Inicializamos el tiempo de simulacion
-            if (self.useSimulation and self.useRealTimeSimulation==0):
-                p.stepSimulation()
-            
-            # for pose in poses:
-            #     ik, pos_des, vel_des = self.move_arm_to_pose("right", pose)
+        #Inicializamos el tiempo de simulacion
+        if (self.useSimulation and self.useRealTimeSimulation==0):
+            p.stepSimulation()
+        
+        # for pose in poses:
+        #     ik, pos_des, vel_des = self.move_arm_to_pose("right", pose)
 
-            #Publicamos los joints values en el brazo correpondiente
+        #Publicamos los joints values en el brazo correpondiente
 
-            right_position = rospy.get_param('position_right')
+        # right_position = rospy.get_param('position_right')
 
-            print("joints right",right_position)
-                # if not self.useRealTimeSimulation:
-                #     p.stepSimulation()
-                #     time.sleep(self.t)
+        # print("joints right",right_position)
+            # if not self.useRealTimeSimulation:
+            #     p.stepSimulation()
+            #     time.sleep(self.t)
 
-            self.move_arm_to_multiple_poses("right", poses, poses2=None, dynamic_time=10, acc=None, threshold=None)
-            # self.apply_slider_values()
-                # self.detect_autocollisions()
+        
+        self.move_arm_to_multiple_poses("both", poses, poses2, dynamic_time=10, acc=None, threshold=None)
 
 
-            if not self.useRealTimeSimulation:
-                time.sleep(self.t)
+        # Publicamos la trayectoria en el topic
+        if self.pub_left and self.pub_right:
+            pub_arm = "both"
+        elif self.pub_left:
+            pub_arm = "left"
+        elif self.pub_right:
+            pub_arm = "right"
+        else:
+            raise ValueError("No se publicará ningun mensaje")
+
+        #frecuencia de publicacion
+        rate = rospy.Rate(10)  # 10 Hz
+
+        for joint in self.right_joints:
+            node.publish_joints(pub_arm, joint)
+
+            rate.sleep()
+
+        self.pub_left, self.pub_right = False, False
+
+        # self.apply_slider_values()
+        # self.detect_autocollisions()
+
+
+        if not self.useRealTimeSimulation:
+            time.sleep(self.t)
 
 
 # Programa principal
