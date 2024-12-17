@@ -1,23 +1,23 @@
-from dynamics import Dynamics 
+from arms_dynamics import ArmsDynamics 
 import pybullet as p
 import time
 import math
 import rospy
 
 #Class for kinematics
-class Kinematics(Dynamics):
+class ArmsKinematics(ArmsDynamics):
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)
 
 
     # Cinemática directa
-    def Calculate_forward_kinematics(self, arm):
-        pos, ori = self.get_end_effector_pose(arm)
+    def calculate_arm_forward_kinematics(self, arm):
+        pos, ori = self.get_arm_end_effector_pose(arm)
 
         return pos, ori
     
     # Cálculo de la cinématica inversa
-    def Calculate_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
+    def calculate_arm_inverse_kinematics(self,robot_id, ee_index, target_position, target_orientation, null=True):
         
         if null:
             ik_solution = p.calculateInverseKinematics(robot_id, ee_index, target_position, target_orientation,lowerLimits=self.ll,
@@ -33,7 +33,6 @@ class Kinematics(Dynamics):
     
     def move_arm_to_pose(self, arm, pose_des, pos_act=None, vel_act=None, accurate=None, threshold=None):
 
-
         #Descomponemos la pose_des
         target_position = pose_des[0]
         target_orientation = pose_des[1]
@@ -44,15 +43,11 @@ class Kinematics(Dynamics):
         # Obtener los índices del brazo seleccionado
         if arm == "left":
             joint_indices = self.ur3_left_arm_joints
-            # Excluir las del brazo izquierdo
-            avoid_joints = list(set(all_joints) - set(self.ur3_left_arm_joints))
             #offset del brazo izquierdo para la solucion cinematica inversa
             offset_iksol = 8
 
         elif arm == "right":
             joint_indices = self.ur3_right_arm_joints 
-            # Excluir las del brazo izquierdo
-            avoid_joints = list(set(all_joints) - set(self.ur3_right_arm_joints))
             #offset del brazo derecho para la solucion cinematica inversa
             offset_iksol = 2
 
@@ -60,7 +55,7 @@ class Kinematics(Dynamics):
             raise ValueError("El brazo debe ser 'left' o 'right'.")
 
         # Inverse kinematics for the UR3 robot
-        ik_solution = self.Calculate_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
+        ik_solution = self.calculate_arm_inverse_kinematics(self.robot_id, joint_indices[-1], target_position, target_orientation)
     
 
         # Comprobar si la solución es válida (verificar si hay posiciones NaN)
@@ -74,9 +69,11 @@ class Kinematics(Dynamics):
 
         # Si la solución es válida, mover el brazo
         else:
+
+            # Calculando la dinamica
             if self.Dynamics:
                 #Calculo de la dinamica inversa
-                torque, vel_des, acc_des = self.Calculate_inverse_dynamics(pos_des, pos_act, vel_act, arm)
+                torque, vel_des, acc_des = self.calculate_arm_inverse_dynamics(pos_des, pos_act, vel_act, arm)
 
                 for i, joint_id in enumerate(joint_indices):
                       #set the joint friction
@@ -86,21 +83,24 @@ class Kinematics(Dynamics):
                 p.stepSimulation()
 
                 #Calculamos la dinámica directa para obtener la aceleracion de las articulaciones al aplicar una fuerza sobre ellas
-                acc = self.Calculate_forward_dynamics(torque,arm)
-                print(f"Aceleraciones dinamica directa:",acc)
+                acc = self.calculate_arm_forward_dynamics(torque,arm)
 
+            # Sin calcular la dinámica
             else:
 
+                # Calculo de la cinematica inversa precisa
                 if accurate is not None:
                     threshold2=threshold*threshold
                     closeEnough=False
                     while not closeEnough:
                         closeEnough = self.close_enough_pose(joint_indices, ik_solution, offset_iksol, target_position, threshold2)
-        
+
+                # Calculo de la cinematica inversa sin precision
                 else:
                     for i, joint_id in enumerate(joint_indices):
                         p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
 
+                # Visualize real robot
                 # right_position = rospy.get_param('position_right')
                 # print("joints right",right_position)
                 vel_des = None
@@ -119,9 +119,11 @@ class Kinematics(Dynamics):
         if arm == "left" or arm == "right":
             self.dt = (dynamic_time/(len(poses)) )+ 10e-30
             if arm =="left":
+                # Activar publicador de left arm
                 self.pub_left=True
                 
             else:
+                # Activar publicador de right arm
                 self.pub_right=True
 
             for pose in poses:
@@ -135,6 +137,7 @@ class Kinematics(Dynamics):
                 self.detect_autocollisions()
                 ik, pos_prev, vel_prev = self.move_arm_to_pose(arm, pose, pos_act, vel_act, acc, threshold)
 
+                # Guardar en una lista las poses del brazo, para publicar más tarde en ROS
                 if arm =="left":
                     self.left_joints.append(pos_prev)
                 else:
@@ -143,6 +146,7 @@ class Kinematics(Dynamics):
                 cont=cont+1
                 previous_pos = pos_prev
                 previous_vel = vel_prev
+
                 # Avanzar la simulación para que los movimientos se apliquen
                 if not self.useRealTimeSimulation:
                     p.stepSimulation()
@@ -150,7 +154,8 @@ class Kinematics(Dynamics):
             
 
         if arm == "both":
-            self.pub_right, self.pub_left = True, True
+            # Activamos ambos publicadores
+            self.pub_right, self.pub_left = True, True 
 
             if poses2 is None:
                 raise ValueError("Debes proporcionar poses2 para mover ambos brazos")
@@ -186,7 +191,7 @@ class Kinematics(Dynamics):
 
         return closeEnough
 
-    def move_joints_to_angles(self, arm, joint_angles):
+    def move_arm_joints_to_angles(self, arm, joint_angles):
         
         if arm == "left":
             joint_indices = self.ur3_left_arm_joints
@@ -199,8 +204,8 @@ class Kinematics(Dynamics):
         for i, joint_angle in enumerate(joint_angles):
             p.resetJointState(self.robot_id, joint_indices[i], joint_angle)
 
-        #Calculo de la  cinematica directa
-        pos_ee, ori_ee = self.Calculate_forward_kinematics(arm)
+        #Calculo de la cinematica directa
+        pos_ee, ori_ee = self.calculate_arm_forward_kinematics(arm)
 
     
     def initial_arm_pose(self,arm,pose,type="joint"):
@@ -221,7 +226,7 @@ class Kinematics(Dynamics):
             for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, pose[i])
         elif type == "pose":
-            ik_solution = self.calculate_inverse_kinematics(self.robot_id, joint_indices[-1], pose[0], pose[1])
+            ik_solution = self.calculate_arm_inverse_kinematics(self.robot_id, joint_indices[-1], pose[0], pose[1])
             for i, joint_id in enumerate(joint_indices):
                     p.setJointMotorControl2(self.robot_id, joint_id, p.POSITION_CONTROL, ik_solution[i+offset_iksol])
         else:
@@ -231,7 +236,7 @@ class Kinematics(Dynamics):
             p.stepSimulation()
             time.sleep(self.t)
 
-    def get_end_effector_pose(self, arm):
+    def get_arm_end_effector_pose(self, arm):
 
         # Obtener la posición del efector final del brazo
         if arm == "left":

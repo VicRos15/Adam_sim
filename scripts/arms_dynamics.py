@@ -1,16 +1,16 @@
-from adam import ADAM 
 import pybullet as p
 import time
+from adam import ADAM 
 
 
 #Class for dynamics
-class Dynamics(ADAM):
+class ArmsDynamics(ADAM):
 
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)
 
     
-    def get_joints_pos_vel(self, arm):
+    def get_arm_joints_pos_vel(self, arm):
 
         joint_positions = []
         joint_velocities = []
@@ -33,7 +33,7 @@ class Dynamics(ADAM):
 
     
     # Forward dynamics
-    def Calculate_forward_dynamics(self, torques, arm):
+    def calculate_arm_forward_dynamics(self, torques, arm):
         if arm == "right":
             joints = self.ur3_right_arm_joints
 
@@ -76,7 +76,7 @@ class Dynamics(ADAM):
         return joints_acc
     
     # Inverse dynamics
-    def Calculate_inverse_dynamics (self, pos_des, pos_act, vel_act, arm):
+    def calculate_arm_inverse_dynamics (self, pos_des, pos_act, vel_act, arm):
         
         
         #Calculate current pos, vel 
@@ -112,15 +112,6 @@ class Dynamics(ADAM):
                 
         except Exception as e:
             raise SystemError(f"Error en calculateInverseDynamics: {e}")
-
-        # Compare torque calculated with the maximum torque 
-        # for i, torque in enumerate(torque_IK):
-        #     joint_info = p.getJointInfo(self.robot_id,i)
-        #     max_torque = joint_info[10] 
-
-        #     if abs(torque) > max_torque:
-        #         torque_IK[i] = max_torque if torque > 0 else -max_torque
-        #     # print(f"Torque aplicado en la joint {i}: {torque_IK[i]}")
 
         return torque_IK, vel_des, acc_des
     

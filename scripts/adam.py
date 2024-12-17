@@ -48,11 +48,16 @@ class ADAM:
         self.jd = [0.1]*21
 
         # Definir los índices de los brazos (esto depende de tu URDF)
-        self.ur3_right_arm_joints = [20,21,22,23,24,25]  # Brazo derecho
-        self.ur3_left_arm_joints = [31,32,33,34,35,36]  # Brazo izquierdo
+        self.ur3_right_arm_joints = list(range(20,26))  # Brazo derecho
+        self.ur3_left_arm_joints = list(range(44,50)) # Brazo izquierdo
 
-        self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,29,30,37,38,39] #Cuerpo 
-        self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+        # Definir los indices de las manos
+        self.right_hand_joints = list(range(29, 41))
+        self.left_hand_joints = list(range(53,65))
+
+        # Definir joints del cuerpo
+        self.body_joints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,26,27,28,41,50,51] #Cuerpo 
+        self.joints=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51]
 
         self.arm_joints = 6
 
@@ -63,15 +68,18 @@ class ADAM:
         self.acc_joints = []
 
 
-        #Calculo de dinamica
+        # Calculo de dinamica
         self.Dynamics = False
         self.dt = None
 
-        #Topics /right_joints /left_joints
+        # Topics /right_joints /left_joints
         self.right_joints=[]
         self.left_joints=[]
         self.pub_right = False
         self.pub_left = False
+
+        # Señal de colision
+        self.collision = False
 
 
 
@@ -83,21 +91,41 @@ class ADAM:
                 contact_points = p.getClosestPoints(self.robot_id, self.robot_id, distance=0, linkIndexA=left_joint, linkIndexB=right_joint)
                 if len(contact_points) > 0:
                     print("Colisión entre brazos detectada")
+                    self.collision = True
                     return True
 
-        #Colisiones cuerpo-brazo izquierdo
+        # Colisiones cuerpo-brazo izquierdo
         for left_joint in self.ur3_left_arm_joints:
             contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=left_joint)
             if len(contact_points) > 0:
                 print("Colisión entre brazo izq-cuerpo")
+                self.collision = True
                 return True
         
-        #Colisiones cuerpo-brazo derecho
+        # Colisiones cuerpo-brazo derecho
         for right_joint in self.ur3_right_arm_joints:
             contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=right_joint)
             if len(contact_points) > 0:
                 print("Colisión entre brazo der-cuerpo")
+                self.collision = True
                 return True
+            
+        # Colisiones cuerpo-mano derecha
+        for right_hand in self.right_hand_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=right_hand)
+            if len(contact_points) > 0:
+                print("Colisión entre mano der-cuerpo")
+                self.collision = True
+                return True
+
+        # Colisiones cuerpo-mano izquierda
+        for left_hand in self.left_hand_joints:
+            contact_points = p.getClosestPoints(self.robot_id, self.robot_stl_id, distance=0.01, linkIndexA=left_hand)
+            if len(contact_points) > 0:
+                print("Colisión entre mano izq-cuerpo")
+                self.collision = True
+                return True
+            
 
         return False  # No hay colisiones
     
@@ -106,28 +134,32 @@ class ADAM:
         # Detectar colisiones del brazo izquierdo o derecho con otros objetos en la escena
         left_arm_collision = False
         right_arm_collision = False
+        body_collision = False
 
         # Comprobar colisiones del brazo izquierdo con el objeto
         for left_joint in self.ur3_left_arm_joints:
             contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=left_joint)
             if len(contact_points) > 0:
                 left_arm_collision = True
+                self.collision = True
 
         # Comprobar colisiones del brazo derecho con el objeto
         for right_joint in self.ur3_right_arm_joints:
             contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=right_joint)
             if len(contact_points) > 0:
                 right_arm_collision = True
+                self.collision = True
 
 
-        #cOMPROBAR OBJETO CON CUERPO
-        for right_joint in self.ur3_right_arm_joints:
-            contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=right_joint)
+        # Comprobar objeto con cuerpo
+        for body_joint in self.body_joints:
+            contact_points = p.getClosestPoints(self.robot_id, object_id, distance=0, linkIndexA=body_joint)
             if len(contact_points) > 0:
-                right_arm_collision = True
+                body_collision = True
+                self.collision = True
  
         #Que nos devuelva puntos de contacto(articulaciones) y además un true o false
-        return left_arm_collision, right_arm_collision
+        return left_arm_collision, right_arm_collision, body_collision
 
 
     
