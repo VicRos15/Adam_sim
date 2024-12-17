@@ -5,15 +5,7 @@
 <robot
   name="inspire_hand_l">
   
-  <link name="world"/>
-  <joint name="fixed" type="fixed">
-  <origin
-   xyz="0.5 0.5 0.5"
-   rpy="-1.5707963 0 0" />
-  <parent link="world"/>
-  <child link="L_hand_base_link"/>
-  </joint>
-  
+  <!--link name="world"/-->
   <link
     name="L_hand_base_link">
     <inertial>
@@ -32,8 +24,11 @@
     </inertial>
     <visual>
       <origin
+        xyz="-0.078 0.2488 -0.10303"
+        rpy="3.141592 0 3.141592" />
+      <!--origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="0 0 0" /-->
       <geometry>
         <mesh
           filename="package://inspire_hand_l/meshes/L_hand_base_link.STL" />
@@ -46,8 +41,11 @@
     </visual>
     <collision>
       <origin
+        xyz="-0.078 0.2488 -0.10303"
+        rpy="3.141592 0 3.141592" />
+      <!--origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="0 0 0" /-->
       <geometry>
         <mesh
           filename="package://inspire_hand_l/meshes/L_hand_base_link.STL" />
@@ -98,8 +96,11 @@
     name="L_thumb_MCP_joint1"
     type="revolute">
     <origin
+      xyz="0.020633 0.01707 0.05523"
+      rpy="-4.71238898 0 -2.672202654" />
+    <!--origin
       xyz="-0.098633 -0.23173 -0.15826"
-      rpy="-1.5708 0 -0.16939" />
+      rpy="-1.5708 0 -0.16939" /-->
     <parent
       link="L_hand_base_link" />
     <child
@@ -107,10 +108,15 @@
     <axis
       xyz="0 1 0" />
     <limit
+      lower="0"
+      upper="1.1"
+      effort="50"
+      velocity="1" />
+    <!--limit
       lower="0.3"
       upper="1.4"
       effort="50"
-      velocity="1" />
+      velocity="1" /-->
   </joint>
   <link
     name="L_thumb_proximal">
@@ -157,7 +163,10 @@
     type="revolute">
     <origin
       xyz="-0.0115 0.005 0"
-      rpy="2.1656 -1.5708 0" />
+      rpy="0.82401 -1.5708 0" />
+    <!--origin
+      xyz="-0.0115 0.005 0"
+      rpy="2.1656 -1.5708 0" /-->
     <parent
       link="L_thumb_proximal_base" />
     <child
@@ -165,10 +174,15 @@
     <axis
       xyz="-1 0 0" />
     <limit
+      lower="0"
+      upper="0.5"
+      effort="50"
+      velocity="1" />
+    <!--limit
       lower="1.5"
       upper="2"
       effort="50"
-      velocity="1" />
+      velocity="1" /-->
   </joint>
   <link
     name="L_thumb_intermediate">
@@ -330,8 +344,11 @@
     name="L_index_MCP_joint"
     type="revolute">
     <origin
+      xyz="0.018414 -0.00017 0.13704"
+      rpy="-4.462392654 0.034907 0" />
+    <!--origin
       xyz="-0.096414 -0.24897 -0.24007"
-      rpy="-1.3208 -0.034907 3.1416" />
+      rpy="-1.3208 -0.034907 3.1416" /-->
     <parent
       link="L_hand_base_link" />
     <child
@@ -446,8 +463,11 @@
     name="L_middle_MCP_joint"
     type="revolute">
     <origin
+      xyz="-0.000932 -0.00017 0.13713"
+      rpy="-4.462392654 0 0" />
+    <!--origin
       xyz="-0.077068 -0.24897 -0.24016"
-      rpy="-1.3208 0 3.1416" />
+      rpy="-1.3208 0 3.1416" /-->
     <parent
       link="L_hand_base_link" />
     <child
@@ -562,8 +582,11 @@
     name="L_ring_MCP_joint"
     type="revolute">
     <origin
+      xyz="-0.022902 -0.00017 0.13606"
+      rpy="-4.462392654 -0.05236 0" />
+    <!--origin
       xyz="-0.055098 -0.24897 -0.23909"
-      rpy="-1.3208 0.05236 3.1416" />
+      rpy="-1.3208 0.05236 3.1416" /-->
     <parent
       link="L_hand_base_link" />
     <child
@@ -678,8 +701,11 @@
     name="L_pinky_MCP_joint"
     type="revolute">
     <origin
+      xyz="-0.044744 -0.00017 0.1337"
+      rpy="-4.462392654 -0.10472 0" />
+    <!--origin
       xyz="-0.033256 -0.24897 -0.23673"
-      rpy="-1.3208 0.10472 3.1416" />
+      rpy="-1.3208 0.10472 3.1416" /-->
     <parent
       link="L_hand_base_link" />
     <child
