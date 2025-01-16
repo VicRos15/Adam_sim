@@ -11,7 +11,7 @@ from node_connection import Node
 import rospy
 
 #Class for simulation
-class Simulation(Sliders,ArmsKinematics):
+class Simulation(Sliders, ArmsKinematics, HandsKinematics):
     def __init__(self, urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True):
         super().__init__(urdf_path, robot_stl_path, useSimulation, useRealTimeSimulation, used_fixed_base=True)
 
@@ -38,10 +38,10 @@ class Simulation(Sliders,ArmsKinematics):
         print("len de poses: ",len(poses))
 
 
-        ## Initial pose
-        # for _ in range(100):
-        #     self.initial_arm_pose("right",initial_right_pose)
-        #     self.initial_arm_pose("left",initial_left_pose)
+        # Initial pose
+        for _ in range(100):
+            self.initial_arm_pose("right",initial_right_pose)
+            self.initial_arm_pose("left",initial_left_pose)
         
         # #Initialize subscribers
         # node.read_joints("right")
@@ -51,14 +51,25 @@ class Simulation(Sliders,ArmsKinematics):
         if (self.useSimulation and self.useRealTimeSimulation==0):
             p.stepSimulation()
         
-        
-        # self.move_arm_to_multiple_poses("both", poses, poses2, dynamic_time=10, acc=None, threshold=None)
+        # for pose in poses:
+        #     self.move_arm_to_pose("right", pose)
+
+        #     if (self.useSimulation and self.useRealTimeSimulation==0):
+        #         p.stepSimulation()
+        #         time.sleep(self.t)
+
+        self.hand_forward_kinematics("both", [800,800,800,800,800], [800,800,800,800,800])
+
+        if (self.useSimulation and self.useRealTimeSimulation==0):
+            p.stepSimulation()
+            time.sleep(self.t)
+
+        time.sleep(200)
+
+
         # self.print_robot_info()
 
-
-        while(True):
-
-
+        # while(True):
         ## ROS
 
         # # Publicamos la trayectoria en el topic
@@ -81,14 +92,14 @@ class Simulation(Sliders,ArmsKinematics):
 
         # self.pub_left, self.pub_right = False, False
 
-            self.apply_slider_values()
-            if self.detect_autocollisions():
-                break
+            # self.apply_slider_values()
+            # if self.detect_autocollisions():
+            #     break
 
 
 
-            if not self.useRealTimeSimulation:
-                time.sleep(self.t)
+        if not self.useRealTimeSimulation:
+            time.sleep(self.t)
 
 
 # URDF robot

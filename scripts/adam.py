@@ -81,6 +81,7 @@ class ADAM:
         # Señal de colision
         self.collision = False
 
+        self.joint_angle = 0.22
 
 
     #Collisions
