@@ -24,6 +24,12 @@ class Simulation(Sliders, ArmsKinematics, HandsKinematics):
         initial_left_pose = [0.11,-1.96,-0.79,0.67,-0.08,-0.01]
         initial_right_pose = [0.66,-2.26,-0.70,-0.14,2.55,-1.15]
 
+
+        position_ee, quaternion_ee= self.calculate_FK_PyKDL("left", initial_left_pose)
+        position_ee = (position_ee[0], position_ee[1], position_ee[2])
+
+        initial_left_ee_pose = [position_ee, quaternion_ee]
+
         #Cargamos el archivo de matlab
         positions_data = scipy.io.loadmat('/home/vrosi/TFM/Adam_sim/simulaciones_reales/positions.mat')
         positions = positions_data['positionR']
@@ -37,9 +43,14 @@ class Simulation(Sliders, ArmsKinematics, HandsKinematics):
         poses2=poses
         print("len de poses: ",len(poses))
 
+        # # Initial pose achievable
+        # achievable, ik_sol = self.pose_is_achievable("left", initial_left_ee_pose) 
+        # if achievable: print("Pose inicial alcanzable")
+        # else: raise ValueError("Error: Se encontró una pose no alcanzable.")
+
 
         # Initial pose
-        for _ in range(100):
+        for _ in range(20):
             self.initial_arm_pose("right",initial_right_pose)
             self.initial_arm_pose("left",initial_left_pose)
         
@@ -58,8 +69,12 @@ class Simulation(Sliders, ArmsKinematics, HandsKinematics):
         #         p.stepSimulation()
         #         time.sleep(self.t)
 
-        self.hand_forward_kinematics("both", [800,800,800,800,800], [800,800,800,800,800])
+        # self.hand_forward_kinematics("both", [1000,400,700,700,700,700], [1000,400,700,700,700,700])
 
+        # Las trayectorias registradas son del brazo derecho, por eso no te dejará mover el izquierdo
+        self.move_arm_to_multiple_poses('right', poses, poses2)
+
+        
         if (self.useSimulation and self.useRealTimeSimulation==0):
             p.stepSimulation()
             time.sleep(self.t)
